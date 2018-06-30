@@ -1,6 +1,6 @@
-**Recess**    
-Racket Entity-Component-System    
-Design Document    
+# Recess 
+## Racket Entity-Component-System    
+### Design Document    
   
 This is an attempt to document the desired properties of a general Racket ECS domain specific language. Our goal is to answer the questions: why is ECS design useful, and what code properties will lead to fully realizing its benefits?    
   
@@ -124,9 +124,7 @@ Note: the syntax below is still in flux.
 ```racket
 ;; adding a component to an existing entity
 (Rotatable+! ex1)
-```
 
-```racket
 ;; removing a component from an existing entity
 (Rotatable-! ex1)
 ```
