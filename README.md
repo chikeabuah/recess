@@ -100,7 +100,7 @@ Below are desired properties regarding individual concepts:
 - So another method is to have these same giant arrays per component, but entity #10 gets not a bitmap for which components are enabled, but an array giving the index into the Position array (maybe #8) and the Gravity array (maybe #11). This matches the “scatter-gather” work style.
 - Perhaps it would be possible for us to allow a Component to be specified as “sparse” to enable this other behavior.
   
-Syntax/Notation Ideas    
+### Syntax/Notation Ideas    
 This is a take on the user interface for a Racket ECS domain specific language.    
   
 The general goals for the user interface of the DSL are:    
@@ -110,34 +110,56 @@ The general goals for the user interface of the DSL are:
 - Intuitive. Easy to reason about.
 - Makes everyone happy.
   
-In the illustrations below, we attempt to build out the game of [Tetris.](null)  
+In the illustrations below, we attempt to build out the game of [Tetris](https://en.wikipedia.org/wiki/Tetris).  
   
 Note: the syntax below is still in flux.    
   
-**Creating an entity**    
-** ** ;; XXX Activetetromino is an archetype    
- (define ex1 (ActiveTetromino))    
+**Creating an entity**
+```racket
+ ;; XXX Activetetromino is an archetype    
+ (define ex1 (ActiveTetromino))  
+ ```  
   
 **Modifying an entity**    
-| # adding a component to an existing entity(Rotatable+! ex1)# removing a component from an existing entity(Rotatable-! ex1) | 
-| :--- | 
+```racket
+;; adding a component to an existing entity
+(Rotatable+! ex1)
+```
+
+```racket
+;; removing a component from an existing entity
+(Rotatable-! ex1)
+```
 
   
-**Creating/Modifying a reusable archetype**    
-**;; XXX Archetypes are constructors and type signatures for systems.**    
-**;; this may seem a bit weird --- because they serve two very different purposes. **    
-**;; It might be theoretically beautiful to have them separate, but practically it ;; seems like you almost always want to be able to construct from the archetype**    
-**;;**    
-**;; XXX Perhaps archetypes are a special case of a component with “parents”. That ;; is, ActiveTetromino is like a component that has 7 parents and none of its own ;; fields. In practice, it would be optimized away to no fields and no runtime representation?**    
-| (define-archetype (ActiveTetromino [shape (random-shape)] [color (random-color)]) (Shape shape) (Color color) (Position) (Rotatable) (CanSoftDrop) (CanHardDrop)
- (Active)) | 
-| :--- | 
+**Creating/Modifying a reusable archetype**
+```racket    
+;; XXX Archetypes are constructors and type signatures for systems.
+;; this may seem a bit weird --- because they serve two very different purposes.    
+;; It might be theoretically beautiful to have them separate, but practically it 
+;; seems like you almost always want to be able to construct from the archetype    
+;;  
+;; XXX Perhaps archetypes are a special case of a component with “parents”. That 
+;; is, ActiveTetromino is like a component that has 7 parents and none of its own 
+;; fields. In practice, it would be optimized away to no fields and no runtime representation?
+ (define-archetype
+ (ActiveTetromino [shape (random-shape)] [color (random-color)])
+ (Shape shape) (Color color)
+ (Position) (Rotatable)
+ (CanSoftDrop) (CanHardDrop)
+ (Active)) 
+ ```
 
   
 **Creating a component**    
-| (define-component Shape ([which (random-shape)]))(define-component Color ([rgb (random-color)]))(define-component Position ([x 0] [y 0]))(define-component Rotatable)(define-component CanSoftDrop)(define-component CanHardDrop) | 
-| :--- | 
-
+```racket
+(define-component Shape ([which (random-shape)]))
+(define-component Color ([rgb (random-color)]))
+(define-component Position ([x 0] [y 0]))
+(define-component Rotatable)
+(define-component CanSoftDrop)
+(define-component CanHardDrop) 
+```
   
 **Creating a system**    
 - Define the system’s functions, archetype, and optionally dependencies/events etc.
@@ -145,7 +167,8 @@ Note: the syntax below is still in flux.
 - Let’s create a gravity system to govern the downward motion of tetrominoes over time.
 - We can assume a Position component with x & y coordinate fields.
 - We can also assume that once a tetromino reaches a resting point, another system will be responsible for “deactivating” it (by modifying its archetype) so gravity no longer applies. This system, a check-active system, can depend on gravity, because we want to check after every downward motion if the tetromino is still active.
-  
+
+```racket  
 (define-system gravity    
  #:on (ActiveTetromino)    
  ;; XXX Maybe don't need?    
@@ -162,20 +185,23 @@ Note: the syntax below is still in flux.
  ;; check if we’ve reached the bottom    
  ;; if so then    
  (set! e.Active.flag false))    
-  
+```  
   
 **World operations**    
   
+ ```racket 
   ;; XXX This is a little ugly, maybe there is a way to make a system    
   ;; depend on the existence of at least one entity existing with a    
   ;; certain component. Maybe there is a general "signal"    
   ;; concept. This would go well with being able to say a priori what    
   ;; systems exist and then being able to turn them on later with a    
   ;; signal.    
-| (module+ main (go!  (list ex1 screen music current-score)  [on-tick gravity]
-  [on-tick check-active]  [on-key 'up hard-drop]  [on-key 'down soft-drop])) | 
-| :--- | 
-
-  
-  
+(module+ main
+ (go!
+  (list ex1 screen music current-score)
+  [on-tick gravity]
+  [on-tick check-active]
+  [on-key 'up hard-drop]
+  [on-key 'down soft-drop])) 
+```
   
