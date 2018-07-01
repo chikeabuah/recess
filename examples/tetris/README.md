@@ -1,0 +1,51 @@
+# Tetris ECS Design     
+- Components: Raw data, no logic. Components could be flat or enumerated types, for this Tetris implementation we will experiment with flatter components.
+  - Shape --- `(define-enum Shape (Block I J L O S T Z))`
+  - Color
+  - Position (in the Well)
+  - Held
+  - QueueX 
+  - Active
+  - Score
+  - Time
+- Archetypes: Unique collection of component types.
+  - ActiveTetro (Shape + Color + Position + Active): Short name for tetrominoes, the playing pieces of Tetris. In the design of this game, the entities that fall from the top of the screen are tetros, up until the point they hit the bottom. At this point they are deactivated and dissolved into their constituent blocks which sit idly at the bottom of the screen until they can be cleared by the tetris horizontal line clear mechanism
+  - Block (Shape + Color + Position): Tetrominoes (tetros for short) are composed of blocks, which are simple squares. Blocks are only introduced when tetros become idle, as described previously.
+- Events: Collection of data that can be generated and consumed by systems or by the external world. Multiple event instances must be combined into one event.
+  - key-event
+  - touched-bottom
+  - can-rotate-cw
+  - can-rotate-ccw
+  - can-move-left
+  - can-move-right
+  - can-move-down
+  - game-over: this is intended for the world to receive
+  - sound-effect
+  - music
+  - graphic --- for now, just x, y, color and we’ll make a block-based text display
+- Systems: Functions: logic, event handlers, update functions. Responsible for inspecting and updating data in components. Runs on every entity that matches its archetype.
+  - handle-input
+  - touched-bottom?
+  - compute-collision-structure 
+  - can-move-left?: Sideways movement/rotation predicates should depend on handle-input.
+  - can-move-right?
+  - can-move-down?
+  - can-rotate-cw?
+  - can-rotate-ccw?
+  - move-left: Depends on can-move-left?. This pattern holds for all such system pairs.
+  - move-right
+  - move-down
+  - rotate-cw
+  - rotate-ccw
+  - soft-drop: Depends on can-move-down?
+  - hard-drop: Depends on can-move-down?
+  - increment-score
+  - increment-timer
+  - clear-full-rows
+  - tetros-to-blocks
+  - check-block-overflow: Depends on touched-bottom?
+- Worlds: Collection of entities  + systems. Other forms of bookkeeping.
+  - tetris-world
+  
+  
+  
