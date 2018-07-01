@@ -168,17 +168,11 @@ Note: the syntax below is still in flux.
 
 ```racket  
 (define-system gravity    
- #:on (ActiveTetromino)    
- ;; XXX Maybe don't need?    
- #:read (Position)    
- #:write (Position)    
- ;; XXX e is implicit? Just drop e and write Position.x?    
+ #:on (ActiveTetromino)        
  (set! e.Position.y (sub1 e.Position.y)))    
   
 (define-system check-active    
- #:on (ActiveTetromino)    
- #:read (Active)    
- #:write (Active)    
+ #:on (ActiveTetromino)        
  #:depends (gravity)    
  ;; check if we’ve reached the bottom    
  ;; if so then    
