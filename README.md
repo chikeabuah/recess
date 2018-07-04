@@ -82,6 +82,7 @@ Below are desired properties regarding individual concepts:
 - We can check if a component or archetype is a subset of another archetype in one operation.
 - Creating more than one archetype with the same set of constituent components should produce an ambiguity warning (if not an error).
 - Archetypes are statically resolved, they are replaced with an actual type at compile time, rather than at run time.
+- A single component can be used as an archetype.
 
 ### World
 - This is the bookkeeper, system dependency manager, and execution engine.
