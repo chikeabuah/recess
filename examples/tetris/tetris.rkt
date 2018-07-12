@@ -20,39 +20,40 @@
 (define-component Active) 
 (define-component Score ([val 0])) 
 (define-component Time ([val 0])) 
-;
+
 ;;; XXX Archetypes
-;
-;(define-archetype (ActiveTetro [shape (random-shape)] [color (random-color)])
-;  (Shape shape) (Color color)
-;  (Position) (Active))
-;
-;(define-archetype (Block [shape (unit-block)] [color (random-color)])
-;  (Shape shape) (Color color)
-;  (Position)) 
-;
+
+(define-archetype (ActiveTetro [shape (random-shape)] [color (random-color)])
+  (Shape shape) (Color color)
+  (Position) (Active))
+
+(define-archetype (Block [shape (unit-block)] [color (random-color)])
+  (Shape shape) (Color color)
+  (Position)) 
+
 ;;; XXX Events
-;
-;(define-event key-event key-event?)
-;(define-event clock-tick time-event?)
-;(define-event collision-structure vector? (make-vector ROWS (make-vector COLS #f)))
-;;; Boolean events will most likely have an equivalent system responsible
-;;; for determining and relaying these events. This could be an opportunity
-;;; for a useful idiom i.e. if a system is subscribed to an event, it also
-;;; depends on the equivalent relaying system implicitly.
-;(define-event touched-bottom? boolean?) 
-;(define-event can-rotate-cw? boolean?) 
-;(define-event can-rotate-ccw? boolean?) 
-;(define-event can-move-left? boolean?) 
-;(define-event can-move-right? boolean?) 
-;(define-event can-move-down? boolean?) 
-;(define-event game-over) 
-;(define-event sound-effect) 
-;(define-event music)
-;(struct graphic (x y color) #:mutable)
-;(define-event graphic graphic?) 
-;
-;
+
+(struct graphic (x y color) #:mutable)
+
+;; Boolean events will most likely have an equivalent system responsible
+;; for determining and relaying these events. This could be an opportunity
+;; for a useful idiom i.e. if a system is subscribed to an event, it also
+;; depends on the equivalent relaying system implicitly.
+(define-event key-event key-event?)
+(define-event clock-tick time-event?)
+(define-event collision-structure vector? (make-vector ROWS (make-vector COLS #f)))
+(define-event touched-bottom? boolean?) 
+(define-event can-rotate-cw? boolean?) 
+(define-event can-rotate-ccw? boolean?) 
+(define-event can-move-left? boolean?) 
+(define-event can-move-right? boolean?) 
+(define-event can-move-down? boolean?) 
+(define-event game-over) 
+(define-event sound-effect) 
+(define-event music)
+(define-event graphic graphic?) 
+
+
 ;;; XXX Systems
 ;
 ;(define-system handle-input    
