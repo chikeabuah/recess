@@ -60,8 +60,7 @@
 
 (define-system compute-collision-structure    
   #:archetype Block
-  #:on touched-bottom?
-  #:in collision-structure
+  #:on touched-bottom? collision-structure
   #:out collision-structure
   #:depends tetro-to-blocks
   #:map (lambda (e) 
@@ -73,7 +72,6 @@
 (define-system touched-bottom?    
   #:archetype ActiveTetromino
   #:on clock-tick collision-structure
-  #:in collision-structure
   #:out touched-bottom?
   #:map (lambda (e)
     (vector-ref 
@@ -83,7 +81,7 @@
 
 (define-system check-block-overflow   
   #:archetype ActiveTetromino
-  #:in collision-structure
+  #:on collision-structure
   #:out touched-bottom?
   #:depends compute-collision-structure
   #:map (lambda (e) (< e.Position.y 0)))
@@ -117,32 +115,28 @@
 
 (define-system hard-drop    
   #:archetype ActiveTetromino
-  #:on (eq? key-event 'down)
-  #:in collision-structure
+  #:on (eq? key-event 'down) collision-structure
   #:depends compute-collision-structure move-down
   #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure))))
 
 
 (define-system soft-drop    
   #:archetype ActiveTetromino
-  #:on (eq? key-event 'd)  
-  #:in collision-structure
+  #:on (eq? key-event 'd) collision-structure
   #:depends compute-collision-structure move-down
   #:map (lambda (e) (set! e.Position.y (- e.Position.y 3))))
 
 
 (define-system rotate-ccw    
   #:archetype ActiveTetromino
-  #:on (eq? can-rotate-ccw? #t)
-  #:in collision-structure
+  #:on (eq? can-rotate-ccw? #t) collision-structure
   #:depends compute-collision-structure
   #:map (lambda (e) (rotate90 (rotate90 (rotate90 e)))))
 
 
 (define-system rotate-cw    
   #:archetype ActiveTetromino
-  #:on (eq? can-rotate-cw? #t)  
-  #:in collision-structure
+  #:on (eq? can-rotate-cw? #t) collision-structure
   #:depends compute-collision-structure
   #:map (lambda (e) (rotate90 e)))
 
@@ -151,7 +145,6 @@
   #:on clock-tick (eq? can-move-down? #t)
   #:map (lambda (e)
     (set! e.Position.y (sub1 e.Position.y))))
-
 
 (define-system move-right    
   #:archetype ActiveTetromino
@@ -165,24 +158,23 @@
   #:map (lambda (e)
     (set! e.Position.x (sub1 e.Position.x))))
 
-
 (define-system can-rotate-ccw?    
   #:archetype ActiveTetromino
-  #:in collision-structure
+  #:on collision-structure
   #:out can-rotate-ccw?
   #:depends compute-collision-structure
   #:map (lambda (e) (valid-ccw? e collision-structure)))
 
 (define-system can-rotate-cw?    
   #:archetype ActiveTetromino
-  #:in collision-structure
+  #:on collision-structure
   #:out can-rotate-cw?
   #:depends compute-collision-structure
   #:map (lambda (e) (valid-cw? e collision-structure)))
 
 (define-system can-move-down?    
   #:archetype ActiveTetromino
-  #:in collision-structure
+  #:on collision-structure
   #:out can-move-down?
   #:depends compute-collision-structure
   #:map (lambda (e) (vacant-down? e collision-structure)))
@@ -190,7 +182,7 @@
 
 (define-system can-move-right?    
   #:archetype ActiveTetromino
-  #:in collision-structure
+  #:on collision-structure
   #:out can-move-right?
   #:depends compute-collision-structure
   #:map (lambda (e) (vacant-right? e collision-structure)))
@@ -198,7 +190,7 @@
 
 (define-system can-move-left?    
   #:archetype ActiveTetromino
-  #:in collision-structure
+  #:on collision-structure
   #:out can-move-left?
   #:depends compute-collision-structure
   #:map (lambda (e) (vacant-left? e collision-structure)))
