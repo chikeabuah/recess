@@ -79,7 +79,6 @@
     (vector-ref 
       (vector-ref collision-structure (sub1 e.Position.y)) 
       e.Position.x)))
-  
 
 (define-system check-block-overflow   
   #:archetype ActiveTetromino
