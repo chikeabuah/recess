@@ -1,5 +1,6 @@
 #lang racket
 (require (for-syntax syntax/parse))
+(require graph)
 
 (provide
  (all-defined-out)
@@ -30,9 +31,9 @@
 (define define-system
   (lambda
       (system-name
-       #:archetype archetype-name
-       #:on inputs
-       #:out outputs
-       #:depends dependencies
-       #:map map-fn)
+       #:archetype [archetype-name null]
+       #:on [inputs null]
+       #:out [outputs null]
+       #:depends [dependencies null]
+       #:map [map-fn null])
     (string-append "Hello, " " ")))

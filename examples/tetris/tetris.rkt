@@ -55,18 +55,18 @@
 
 ;; XXX Systems
 
-(define-system handle-input    
-  #:out key-event)    
+(define-system 'handle-input    
+  #:out 'key-event)    
 
-(define-system compute-collision-structure    
-  #:archetype Block
-  #:on touched-bottom? collision-structure
-  #:out collision-structure
-  #:depends tetro-to-blocks
+(define-system 'compute-collision-structure    
+  #:archetype 'Block
+  #:on '(touched-bottom? collision-structure)
+  #:out 'collision-structure
+  #:depends 'tetro-to-blocks
   #:map (lambda (e) 
     (vector-set! 
-      (vector-ref collision-structure e.Position.y) 
-      e.Position.x
+      (vector-ref 'collision-structure 'e.Position.y) 
+      'e.Position.x
       #t)))        
 
 ;(define-system touched-bottom?    
@@ -194,7 +194,6 @@
 ;  #:out can-move-left?
 ;  #:depends compute-collision-structure
 ;  #:map (lambda (e) (vacant-left? e collision-structure)))
->>>>>>> f19ede9c523e4764d8b682f43cb55752edf0c7ca
 
 
 ;; XXX Worlds
