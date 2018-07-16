@@ -6,6 +6,14 @@
  (all-defined-out)
  (all-from-out racket))
 
+(define recess-graph (unweighted-graph/directed '(a)))
+(define-vertex-property recess-graph archetype)
+(define-vertex-property recess-graph map-fn)
+(define-vertex-property recess-graph parents #:init '())
+(define-vertex-property recess-graph children #:init '())
+(define-vertex-property recess-graph inputs #:init '())
+(define-vertex-property recess-graph outputs #:init '())
+
 ;; A component is an identifier [and an expression]
 ;; Seems that components may be lambdas 
 (define-syntax (define-component stx)
@@ -31,9 +39,24 @@
 (define define-system
   (lambda
       (system-name
-       #:archetype [archetype-name null]
-       #:on [inputs null]
-       #:out [outputs null]
-       #:depends [dependencies null]
-       #:map [map-fn null])
-    (string-append "Hello, " " ")))
+       #:archetype [archetype-name #f]
+       #:on [new-inputs #f]
+       #:out [new-outputs #f]
+       #:depends [new-dependencies #f]
+       #:map [map-fn #f])
+    (begin
+      (add-vertex! recess-graph system-name)
+      (and archetype-name (archetype-set! system-name archetype-name))
+      (and map-fn (map-fn-set! system-name map-fn))
+      (and
+       new-inputs
+       (inputs-set! system-name (cons new-inputs (inputs system-name #:default '()))))
+      (and
+       new-outputs
+       (outputs-set! system-name (cons new-outputs (outputs system-name #:default '()))))
+      (and
+       new-dependencies
+       (parents-set! system-name (cons new-dependencies (parents system-name #:default '()))))
+      (graphviz recess-graph))))
+
+
