@@ -1,4 +1,4 @@
-#lang s-exp "recess.rkt"
+#lang s-exp "recess-graph.rkt"
 
 ;; Tetris
 
@@ -33,19 +33,9 @@
 
 (struct graphic (x y color) #:mutable)
 
-;; Boolean events will most likely have an equivalent system responsible
-;; for determining and relaying these events. This could be an opportunity
-;; for a useful idiom i.e. if a system is subscribed to an event, it also
-;; depends on the equivalent relaying system implicitly.
 (define-event key-event key-event?)
 (define-event clock-tick time-event?)
 (define-event collision-structure vector? (make-vector ROWS (make-vector COLS #f)))
-(define-event touched-bottom? boolean?) 
-(define-event can-rotate-cw? boolean?) 
-(define-event can-rotate-ccw? boolean?) 
-(define-event can-move-left? boolean?) 
-(define-event can-move-right? boolean?) 
-(define-event can-move-down? boolean?) 
 (define-event game-over) 
 (define-event sound-effect) 
 (define-event music)
@@ -53,14 +43,13 @@
 
 ;; XXX Systems
 
-(define-system handle-input    
-  #:out 'key-event)    
+(define-system key-event)    
 
 (define-system compute-collision-structure    
   #:archetype Block
-  #:on '(touched-bottom? collision-structure)
+  #:on '(collision-structure)
   #:out '(collision-structure)
-  #:depends '(tetro-to-blocks)
+  #:depends '(tetros-to-blocks touched-bottom?)
   #:map (lambda (e) 
     (vector-set! 
       (vector-ref collision-structure 'e.Position.y) 
@@ -85,13 +74,12 @@
 
 (define-system tetros-to-blocks   
   #:archetype ActiveTetromino
-  #:on '(touched-bottom?)
-  #:depends '(move-down)
+  #:depends '(move-down touched-bottom?)
   #:map (lambda (e) ('tetro-to-blocks e)))
 
 (define-system clear-full-rows
-  #:on '(collision-structure touched-bottom?)
-  #:depends '(compute-collision-structure)
+  #:on '(collision-structure)
+  #:depends '(compute-collision-structure touched-bottom?)
   #:map (lambda (e) 
     (when #t (set! e (make-vector COLS #f)))))
 
@@ -102,7 +90,7 @@
 
 (define-system increment-score
   #:archetype Score  
-  #:on '(touched-bottom?)
+  #:depends '(touched-timer)
   #:map (lambda (e) (set! e.Score.val (add1 e.Score.val))))
 
 (define-system hard-drop    
@@ -119,32 +107,31 @@
 
 (define-system rotate-ccw    
   #:archetype ActiveTetromino
-  #:on '((eq? can-rotate-ccw? #t) collision-structure)
+  #:on '(collision-structure)
   #:depends '(compute-collision-structure can-rotate-ccw?)
   #:map (lambda (e) (rotate90 (rotate90 (rotate90 e)))))
 
 (define-system rotate-cw    
   #:archetype ActiveTetromino
-  #:on '((eq? can-rotate-cw? #t) collision-structure)
+  #:on '(collision-structure)
   #:depends '(compute-collision-structure can-rotate-cw?)
   #:map (lambda (e) (rotate90 e)))
 
 (define-system move-down    
   #:archetype ActiveTetromino
-  #:on '(clock-tick (eq? can-move-down? #t))
+  #:on '(clock-tick)
+  #:depends '(can-move-down)
   #:map (lambda (e)
     (set! e.Position.y (sub1 e.Position.y))))
 
 (define-system move-right    
   #:archetype ActiveTetromino
-  #:on '((eq? can-move-right? #t))
   #:depends '(can-move-right?)
   #:map (lambda (e)
     (set! e.Position.x (add1 e.Position.x))))
 
 (define-system move-left    
   #:archetype ActiveTetromino
-  #:on '((eq? can-move-left? #t))
   #:depends '(can-move-left?)
   #:map (lambda (e)
     (set! e.Position.x (sub1 e.Position.x))))
@@ -152,36 +139,31 @@
 (define-system can-rotate-ccw?    
   #:archetype ActiveTetromino
   #:on '(collision-structure)
-  #:out '(can-rotate-ccw?)
-  #:depends '(compute-collision-structure)
+  #:depends '(compute-collision-structure handle-input)
   #:map (lambda (e) (valid-ccw? e collision-structure)))
 
 (define-system can-rotate-cw?    
   #:archetype ActiveTetromino
   #:on '(collision-structure)
-  #:out '(can-rotate-cw?)
-  #:depends '(compute-collision-structure)
+  #:depends '(compute-collision-structure handle-input)
   #:map (lambda (e) (valid-cw? e collision-structure)))
 
 (define-system can-move-down?    
   #:archetype ActiveTetromino
   #:on '(collision-structure)
-  #:out '(can-move-down?)
-  #:depends '(compute-collision-structure)
+  #:depends '(compute-collision-structure handle-input)
   #:map (lambda (e) (vacant-down? e collision-structure)))
 
 (define-system can-move-right?    
   #:archetype ActiveTetromino
   #:on '(collision-structure)
-  #:out '(can-move-right?)
-  #:depends '(compute-collision-structure)
+  #:depends '(compute-collision-structure handle-input)
   #:map (lambda (e) (vacant-right? e collision-structure)))
 
 (define-system can-move-left?    
   #:archetype ActiveTetromino
   #:on '(collision-structure)
-  #:out '(can-move-left?)
-  #:depends '(compute-collision-structure)
+  #:depends '(compute-collision-structure handle-input)
   #:map (lambda (e) (vacant-left? e collision-structure)))
 
 ; XXX Worlds
