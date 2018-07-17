@@ -1,10 +1,10 @@
-#lang racket
+#lang racket/base
 (require (for-syntax syntax/parse))
 (require graph)
 
 (provide
  (all-defined-out)
- (all-from-out racket))
+ (all-from-out racket/base))
 
 (define recess-graph (weighted-graph/directed '()))
 (define-vertex-property recess-graph archetype)
