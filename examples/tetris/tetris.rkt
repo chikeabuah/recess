@@ -90,7 +90,7 @@
 
 (define-system increment-score
   #:archetype Score  
-  #:depends '(touched-timer)
+  #:depends '(increment-timer)
   #:map (lambda (e) (set! e.Score.val (add1 e.Score.val))))
 
 (define-system hard-drop    
