@@ -45,7 +45,8 @@
 ;; last graph printed is the full picture
 (define-syntax (define-system stx)
   (syntax-parse stx
-    [(_ system-name (~optional (~seq #:archetype archetype-name))
+    [(_ system-name
+        (~optional (~seq #:archetype archetype-name))
         (~optional (~seq #:on new-inputs))
         (~optional (~seq #:out new-outputs))
         (~optional (~seq #:depends new-dependencies))
