@@ -6,7 +6,7 @@
  (all-defined-out)
  (all-from-out racket))
 
-(define recess-graph (unweighted-graph/directed '()))
+(define recess-graph (weighted-graph/directed '()))
 (define-vertex-property recess-graph archetype)
 (define-vertex-property recess-graph map-fn)
 (define-vertex-property recess-graph parents #:init '())
@@ -24,7 +24,6 @@
        #'(define name (gensym))
        )
      ]))
-
 
 (define-syntax (define-archetype stx)
   (syntax-parse stx
@@ -55,7 +54,7 @@
          (for-each (lambda (parent)
                      (begin
                        (add-vertex! recess-graph 'system-name)
-                       (add-directed-edge! recess-graph parent 'system-name)
+                       (add-directed-edge! recess-graph parent 'system-name (~? new-inputs))
                        )
                      )
                    (~? new-dependencies '()))
@@ -63,74 +62,16 @@
          '(and (~? map-fn #f) (map-fn-set! 'system-name (~? map-fn #f)))
          (and
           (~? new-inputs #f)
-          (inputs-set! 'system-name (cons (~? new-inputs #f) (inputs 'system-name #:default '()))))
+          (inputs-set! 'system-name
+                       (cons (~? new-inputs #f) (inputs 'system-name #:default '()))))
          (and
           (~? new-outputs #f)
-          (outputs-set! 'system-name (cons (~? new-outputs #f) (outputs 'system-name #:default '()))))
+          (outputs-set! 'system-name
+                        (cons (~? new-outputs #f) (outputs 'system-name #:default '()))))
          (and
           (~? new-dependencies #f)
-          (parents-set! 'system-name (cons (~? new-dependencies #f) (parents 'system-name #:default '()))))
+          (parents-set! 'system-name
+                        (cons (~? new-dependencies #f) (parents 'system-name #:default '()))))
          (display (graphviz recess-graph)))
      ]))
-
-
-;     #''(lambda
-;            (system-name
-;             #:archetype [archetype-name (~? p-archetype)]
-;             #:on [new-inputs (~? p-inputs)]
-;             #:out [new-outputs (~? p-outputs)]
-;             #:depends [new-dependencies (~? p-dependencies)]
-;             #:map [map-fn (~? p-map-func)])
-;          (begin
-;            (add-vertex! recess-graph system-name)
-;            (for-each (lambda (parent)
-;                        (begin
-;                          (add-vertex! recess-graph system-name)
-;                          (add-directed-edge! recess-graph parent system-name)
-;                          )
-;                        )
-;                      new-dependencies)
-;            (and archetype-name (archetype-set! system-name archetype-name))
-;            (and map-fn (map-fn-set! system-name map-fn))
-;            (and
-;             new-inputs
-;             (inputs-set! system-name (cons new-inputs (inputs system-name #:default '()))))
-;            (and
-;             new-outputs
-;             (outputs-set! system-name (cons new-outputs (outputs system-name #:default '()))))
-;            (and
-;             new-dependencies
-;             (parents-set! system-name (cons new-dependencies (parents system-name #:default '()))))
-;            (graphviz recess-graph)))
-
-;(define define-system
-;  (lambda
-;      (system-name
-;       #:archetype [archetype-name #f]
-;       #:on [new-inputs #f]
-;       #:out [new-outputs #f]
-;       #:depends [new-dependencies #f]
-;       #:map [map-fn #f])
-;    (begin
-;      (add-vertex! recess-graph system-name)
-;      (for-each (lambda (parent)
-;                  (begin
-;                    (add-vertex! recess-graph system-name)
-;                    (add-directed-edge! recess-graph parent system-name)
-;                    )
-;                  )
-;                new-dependencies)
-;      (and archetype-name (archetype-set! system-name archetype-name))
-;      (and map-fn (map-fn-set! system-name map-fn))
-;      (and
-;       new-inputs
-;       (inputs-set! system-name (cons new-inputs (inputs system-name #:default '()))))
-;      (and
-;       new-outputs
-;       (outputs-set! system-name (cons new-outputs (outputs system-name #:default '()))))
-;      (and
-;       new-dependencies
-;       (parents-set! system-name (cons new-dependencies (parents system-name #:default '()))))
-;      (graphviz recess-graph))))
-
 

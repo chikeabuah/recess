@@ -120,13 +120,13 @@
 (define-system rotate-ccw    
   #:archetype ActiveTetromino
   #:on '((eq? can-rotate-ccw? #t) collision-structure)
-  #:depends '(compute-collision-structure)
+  #:depends '(compute-collision-structure can-rotate-ccw?)
   #:map (lambda (e) (rotate90 (rotate90 (rotate90 e)))))
 
 (define-system rotate-cw    
   #:archetype ActiveTetromino
   #:on '((eq? can-rotate-cw? #t) collision-structure)
-  #:depends '(compute-collision-structure)
+  #:depends '(compute-collision-structure can-rotate-cw?)
   #:map (lambda (e) (rotate90 e)))
 
 (define-system move-down    
@@ -138,12 +138,14 @@
 (define-system move-right    
   #:archetype ActiveTetromino
   #:on '((eq? can-move-right? #t))
+  #:depends '(can-move-right?)
   #:map (lambda (e)
     (set! e.Position.x (add1 e.Position.x))))
 
 (define-system move-left    
   #:archetype ActiveTetromino
   #:on '((eq? can-move-left? #t))
+  #:depends '(can-move-left?)
   #:map (lambda (e)
     (set! e.Position.x (sub1 e.Position.x))))
 
