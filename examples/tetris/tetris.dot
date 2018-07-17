@@ -1,0 +1,58 @@
+digraph G {
+	node0 [label="compute-collision-structure"];
+	node1 [label="can-move-down?"];
+	node2 [label="rotate-ccw"];
+	node3 [label="can-move-right?"];
+	node4 [label="can-rotate-ccw?"];
+	node5 [label="soft-drop"];
+	node6 [label="touched-bottom?"];
+	node7 [label="move-right"];
+	node8 [label="rotate-cw"];
+	node9 [label="check-block-overflow"];
+	node10 [label="can-move-down"];
+	node11 [label="can-rotate-cw?"];
+	node12 [label="tetros-to-blocks"];
+	node13 [label="move-down"];
+	node14 [label="handle-input"];
+	node15 [label="clear-full-rows"];
+	node16 [label="move-left"];
+	node17 [label="key-event"];
+	node18 [label="increment-timer"];
+	node19 [label="increment-score"];
+	node20 [label="hard-drop"];
+	node21 [label="can-move-left?"];
+	subgraph U {
+		edge [dir=none];
+	}
+	subgraph D {
+		node0 -> node5 [label="((eq? key-event (quote d)) collision-structure)"];
+		node0 -> node1 [label="(collision-structure)"];
+		node0 -> node3 [label="(collision-structure)"];
+		node0 -> node4 [label="(collision-structure)"];
+		node0 -> node2 [label="(collision-structure)"];
+		node0 -> node15 [label="(collision-structure)"];
+		node0 -> node20 [label="((eq? key-event (quote down)) collision-structure)"];
+		node0 -> node8 [label="(collision-structure)"];
+		node0 -> node9 [label="(collision-structure)"];
+		node0 -> node11 [label="(collision-structure)"];
+		node0 -> node21 [label="(collision-structure)"];
+		node3 -> node7 [label=""];
+		node4 -> node2 [label="(collision-structure)"];
+		node6 -> node15 [label="(collision-structure)"];
+		node6 -> node0 [label="(collision-structure)"];
+		node6 -> node12 [label=""];
+		node10 -> node13 [label="(clock-tick)"];
+		node11 -> node8 [label="(collision-structure)"];
+		node12 -> node0 [label="(collision-structure)"];
+		node13 -> node5 [label="((eq? key-event (quote d)) collision-structure)"];
+		node13 -> node20 [label="((eq? key-event (quote down)) collision-structure)"];
+		node13 -> node12 [label=""];
+		node14 -> node1 [label="(collision-structure)"];
+		node14 -> node3 [label="(collision-structure)"];
+		node14 -> node4 [label="(collision-structure)"];
+		node14 -> node11 [label="(collision-structure)"];
+		node14 -> node21 [label="(collision-structure)"];
+		node18 -> node19 [label=""];
+		node21 -> node16 [label=""];
+	}
+}
