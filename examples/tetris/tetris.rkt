@@ -43,7 +43,7 @@
 
 ;; XXX Systems
 
-(define-system key-event)    
+#;(define-system key-event)    
 
 (define-system compute-collision-structure    
   #:archetype Block
@@ -120,7 +120,7 @@
 (define-system move-down    
   #:archetype ActiveTetromino
   #:on '(clock-tick)
-  #:depends '(can-move-down)
+  #:depends '(can-move-down?)
   #:map (lambda (e)
     (set! e.Position.y (sub1 e.Position.y))))
 

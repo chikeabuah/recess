@@ -17,7 +17,7 @@
   (syntax-parse stx
     [(_ name [~optional body])
      (begin
-       #''(name (~? body '()))
+       #;#''(name (~? body '()))
        #'(define name (gensym))
        )
      ]))
@@ -35,7 +35,7 @@
   (syntax-parse stx
     [(_ name [~optional pred] [~optional body])
      (begin
-       #''(name (~? pred '()) (~? body '()))
+       #;#''(name (~? pred '()) (~? body '()))
        #'(define name (gensym))
        )
      ]))
