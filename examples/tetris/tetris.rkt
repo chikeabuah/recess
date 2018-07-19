@@ -59,7 +59,6 @@
 (define-system touched-bottom?    
   #:archetype ActiveTetromino
   #:on '(clock-tick collision-structure)
-  #:out '(touched-bottom?)
   #:map (lambda (e)
     (vector-ref 
       (vector-ref collision-structure (sub1 'e.Position.y)) 
