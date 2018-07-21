@@ -51,7 +51,6 @@
         (~optional (~seq #:archetype archetype-name))
         (~seq #:on (lst new-inputs ...))
         (~optional (~seq #:out new-outputs))
-        (~seq #:depends (list new-dependencies ...))
         (~optional (~seq #:map map-fn)))
      #'(begin
 
@@ -64,11 +63,6 @@
            new-inputs
            new-inputs
            (define new-inputs (gensym))) ...
-
-          (if-defined
-           new-dependencies
-           new-dependencies
-           (define new-dependencies (gensym))) ...
          
           (add-vertex! recess-graph 'system-name)            
           ;; (add-directed-edge! recess-graph 'new-dependencies 'system-name (~? new-inputs "")) ...
