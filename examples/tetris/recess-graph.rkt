@@ -43,17 +43,29 @@
   (syntax-parse stx
     [(_ system-name
         (~optional (~seq #:archetype archetype-name))
-        (~optional (~seq #:on new-inputs))
+        (~seq #:on (lst new-inputs ...))
         (~optional (~seq #:out new-outputs))
-        (~seq #:depends (list new-dependencies:id ...))
+        (~seq #:depends (list new-dependencies ...))
         (~optional (~seq #:map map-fn)))
      #'(begin
-         (cond
-           [(not (identifier-binding #'system-name))
-            (define system-name (gensym)) system-name]
-           [(not (identifier-binding #'new-dependencies))
-            (define  (~? new-dependencies '()) (gensym)) new-dependencies] ...)                                      
-         (add-vertex! recess-graph 'system-name)            
-         (add-directed-edge! recess-graph 'new-dependencies 'system-name (~? new-inputs "")) ...
-         (display (graphviz recess-graph)))]))
 
+         (if-defined
+          system-name
+          system-name
+          (define system-name (gensym)))
+
+          (if-defined
+           new-dependencies
+           new-dependencies
+           (define new-dependencies (gensym))) ...
+         
+          (add-vertex! recess-graph 'system-name)            
+          ;; (add-directed-edge! recess-graph 'new-dependencies 'system-name (~? new-inputs "")) ...
+          (display (graphviz recess-graph)))]))
+
+
+(define-syntax (if-defined stx)
+  (syntax-case stx ()
+    [(_ id iftrue iffalse)
+     (let ([where (identifier-binding #'id)])
+       (if where #'iftrue #'iffalse))]))

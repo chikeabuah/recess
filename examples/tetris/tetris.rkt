@@ -56,6 +56,7 @@
 
 (define-system tetros-to-blocks   
   #:archetype ActiveTetromino
+  #:on (list collision-structure)
   #:depends (list move-down touched-bottom?)
   #:map (lambda (e) (tetro-to-blocks e))) 
 
@@ -129,7 +130,8 @@
   #:map (lambda (e) (set! e.Timer.val (add1 e.Timer.val))))
 
 (define-system increment-score
-  #:archetype Score  
+  #:archetype Score
+  #:on (list collision-structure)
   #:depends (list increment-timer)
   #:map (lambda (e) (set! e.Score.val (add1 e.Score.val))))
 
@@ -166,12 +168,14 @@
 
 (define-system move-right    
   #:archetype ActiveTetromino
+  #:on (list collision-structure)
   #:depends (list can-move-right?)
   #:map (lambda (e)
           (set! e.Position.x (add1 e.Position.x))))
 
 (define-system move-left    
   #:archetype ActiveTetromino
+  #:on (list collision-structure)
   #:depends (list can-move-left?)
   #:map (lambda (e)
           (set! e.Position.x (sub1 e.Position.x))))
