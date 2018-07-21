@@ -49,10 +49,6 @@
 
 ;; XXX Systems
 
-#;(define-system key-event)
-
-#;(define-system handle-input)
-
 (define-system tetros-to-blocks   
   #:archetype ActiveTetromino
   #:on (list collision-structure move-down touched-bottom?)
@@ -70,27 +66,27 @@
 
 (define-system can-rotate-ccw?    
   #:archetype ActiveTetromino
-  #:on (list collision-structure compute-collision-structure handle-input)
+  #:on (list collision-structure compute-collision-structure key-event)
   #:map (lambda (e) (valid-ccw? e collision-structure)))
 
 (define-system can-rotate-cw?    
   #:archetype ActiveTetromino
-  #:on (list collision-structure compute-collision-structure handle-input)
+  #:on (list collision-structure compute-collision-structure key-event)
   #:map (lambda (e) (valid-cw? e collision-structure)))
 
 (define-system can-move-down?    
   #:archetype ActiveTetromino
-  #:on (list collision-structure compute-collision-structure handle-input)
+  #:on (list collision-structure compute-collision-structure key-event)
   #:map (lambda (e) (vacant-down? e collision-structure)))
 
 (define-system can-move-right?    
   #:archetype ActiveTetromino
-  #:on (list collision-structure compute-collision-structure handle-input)
+  #:on (list collision-structure compute-collision-structure key-event)
   #:map (lambda (e) (vacant-right? e collision-structure)))
 
 (define-system can-move-left?    
   #:archetype ActiveTetromino
-  #:on (list collision-structure compute-collision-structure handle-input)
+  #:on (list collision-structure compute-collision-structure key-event)
   #:map (lambda (e) (vacant-left? e collision-structure)))      
 
 (define-system touched-bottom?    
