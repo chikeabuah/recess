@@ -32,8 +32,7 @@
 
 (define (create-event ident [pred #f] [init #f])
   (struct event (ident pred init) #:mutable)
-  (event ident pred init)
-  )
+  (event ident pred init))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
@@ -53,17 +52,14 @@
         (~optional (~seq #:out new-outputs))
         (~optional (~seq #:map map-fn)))
      #'(begin
-
          (if-defined
           system-name
           system-name
           (define system-name (gensym)))
-
          (if-defined
            new-inputs
            new-inputs
-           (define new-inputs (gensym))) ...
-         
+           (define new-inputs (gensym))) ...      
           (add-vertex! recess-graph 'system-name)
           (add-vertex! recess-graph 'new-inputs) ...
           (add-directed-edge! recess-graph 'new-inputs 'system-name "") ...

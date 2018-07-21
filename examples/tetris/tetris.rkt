@@ -10,7 +10,6 @@
 ;; the top level vector is vertical
 ;; the vectors it holds represent the horizontal rows
 
-
 (define COLS 10)
 (define ROWS 24)
 
@@ -160,7 +159,5 @@
   #:on (list collision-structure can-move-left?)
   #:map (lambda (e)
           (set! e.Position.x (sub1 e.Position.x))))
-
-
 
 ; XXX Worlds
