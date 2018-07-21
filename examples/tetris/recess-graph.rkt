@@ -18,9 +18,7 @@
     [(_ name [~optional body])
      (begin
        #;#''(name (~? body '()))
-       #'(define name (gensym))
-       )
-     ]))
+       #'(define name (gensym)))]))
 
 ;; list of components
 (define-syntax (define-archetype stx)
@@ -30,15 +28,18 @@
          (lambda ([arg-id default-expr] ...)
            components ...))]))
 
-;; An event is an identifier [also optionally a predicate and an expression]
+;; An event is an identifier [also optionally a predicate and an init expression]
+
+(define (create-event ident [pred #f] [init #f])
+  (struct event (ident pred init) #:mutable)
+  (event ident pred init))
+
 (define-syntax (define-event stx)
   (syntax-parse stx
     [(_ name [~optional pred] [~optional body])
      (begin
        #;#''(name (~? pred '()) (~? body '()))
-       #'(define name (gensym))
-       )
-     ]))
+       #'(define name (create-event 'name)))]))
 
 ;; register a system in the graph and have it print out the graph's
 ;; structure on each call
@@ -47,19 +48,26 @@
   (syntax-parse stx
     [(_ system-name
         (~optional (~seq #:archetype archetype-name))
-        (~optional (~seq #:on new-inputs))
+        (~seq #:on (lst new-inputs ...))
         (~optional (~seq #:out new-outputs))
-        (~optional (~seq #:depends new-dependencies))
         (~optional (~seq #:map map-fn)))
      #'(begin
-         (add-vertex! recess-graph 'system-name)
-         (for-each (lambda (parent)
-                     (begin
-                       (add-vertex! recess-graph 'system-name)
-                       (add-directed-edge! recess-graph parent 'system-name (~? new-inputs ""))
-                       )
-                     )
-                   (~? new-dependencies '()))
-         (display (graphviz recess-graph)))
-     ]))
+         (if-defined
+          system-name
+          system-name
+          (define system-name (gensym)))
+         (if-defined
+           new-inputs
+           new-inputs
+           (define new-inputs (gensym))) ...      
+          (add-vertex! recess-graph 'system-name)
+          (add-vertex! recess-graph 'new-inputs) ...
+          (add-directed-edge! recess-graph 'new-inputs 'system-name "") ...
+          (display (graphviz recess-graph)))]))
 
+
+(define-syntax (if-defined stx)
+  (syntax-case stx ()
+    [(_ id iftrue iffalse)
+     (let ([where (identifier-binding #'id)])
+       (if where #'iftrue #'iffalse))]))
