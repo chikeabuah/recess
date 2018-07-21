@@ -1,4 +1,7 @@
-#lang s-exp "recess-graph.rkt"
+#lang racket/base
+(require "recess-graph.rkt")
+(require "tetris-helpers.rkt")
+(require racket/list)
 
 ;; Tetris
 
@@ -23,11 +26,11 @@
 
 ;;; XXX Archetypes
 
-(define-archetype (ActiveTetromino [shape ('random-shape)] [color ('random-color)])
-  '(Shape Color Position Active))
+(define-archetype (ActiveTetromino [shape (random-shape)] [color (random-color)])
+  (list Shape Color Position Active))
 
-(define-archetype (Block [shape ('unit-block)] [color ('random-color)])
-  '(Shape Color Position)) 
+(define-archetype (Block [shape (unit-block)] [color (random-color)])
+  (list Shape Color Position)) 
 
 ;;; XXX Events
 
@@ -43,126 +46,132 @@
 
 ;; XXX Systems
 
-#;(define-system key-event)    
+#;(define-system key-event)
 
-(define-system compute-collision-structure    
-  #:archetype Block
-  #:on '(collision-structure)
-  #:out '(collision-structure)
-  #:depends '(tetros-to-blocks touched-bottom?)
-  #:map (lambda (e) 
-    (vector-set! 
-      (vector-ref collision-structure 'e.Position.y) 
-      'e.Position.x
-      #t)))        
-
-(define-system touched-bottom?    
-  #:archetype ActiveTetromino
-  #:on '(clock-tick collision-structure)
-  #:map (lambda (e)
-    (vector-ref 
-      (vector-ref collision-structure (sub1 'e.Position.y)) 
-      'e.Position.x)))
-
-(define-system check-block-overflow   
-  #:archetype ActiveTetromino
-  #:on '(collision-structure)
-  #:out '(touched-bottom?)
-  #:depends '(compute-collision-structure)
-  #:map (lambda (e) (< 'e.Position.y 0)))
+#;(define-system handle-input)
 
 (define-system tetros-to-blocks   
   #:archetype ActiveTetromino
-  #:depends '(move-down touched-bottom?)
-  #:map (lambda (e) ('tetro-to-blocks e)))
+  #:depends (list move-down touched-bottom?)
+  #:map (lambda (e) (tetro-to-blocks e))) 
 
-(define-system clear-full-rows
-  #:on '(collision-structure)
-  #:depends '(compute-collision-structure touched-bottom?)
+(define-system compute-collision-structure    
+  #:archetype Block
+  #:on (list collision-structure)
+  #:out (list collision-structure)
+  #:depends (list tetros-to-blocks touched-bottom?)
   #:map (lambda (e) 
-    (when #t (set! e (make-vector COLS #f)))))
-
-(define-system increment-timer
-  #:archetype Timer    
-  #:on '(clock-tick)
-  #:map (lambda (e) (set! e.Timer.val (add1 e.Timer.val))))
-
-(define-system increment-score
-  #:archetype Score  
-  #:depends '(increment-timer)
-  #:map (lambda (e) (set! e.Score.val (add1 e.Score.val))))
-
-(define-system hard-drop    
-  #:archetype ActiveTetromino
-  #:on '((eq? key-event 'down) collision-structure)
-  #:depends '(compute-collision-structure move-down)
-  #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure))))
-
-(define-system soft-drop    
-  #:archetype ActiveTetromino
-  #:on '((eq? key-event 'd) collision-structure)
-  #:depends '(compute-collision-structure move-down)
-  #:map (lambda (e) (set! e.Position.y (- e.Position.y 3))))
-
-(define-system rotate-ccw    
-  #:archetype ActiveTetromino
-  #:on '(collision-structure)
-  #:depends '(compute-collision-structure can-rotate-ccw?)
-  #:map (lambda (e) (rotate90 (rotate90 (rotate90 e)))))
-
-(define-system rotate-cw    
-  #:archetype ActiveTetromino
-  #:on '(collision-structure)
-  #:depends '(compute-collision-structure can-rotate-cw?)
-  #:map (lambda (e) (rotate90 e)))
-
-(define-system move-down    
-  #:archetype ActiveTetromino
-  #:on '(clock-tick)
-  #:depends '(can-move-down?)
-  #:map (lambda (e)
-    (set! e.Position.y (sub1 e.Position.y))))
-
-(define-system move-right    
-  #:archetype ActiveTetromino
-  #:depends '(can-move-right?)
-  #:map (lambda (e)
-    (set! e.Position.x (add1 e.Position.x))))
-
-(define-system move-left    
-  #:archetype ActiveTetromino
-  #:depends '(can-move-left?)
-  #:map (lambda (e)
-    (set! e.Position.x (sub1 e.Position.x))))
+          (vector-set! 
+           (vector-ref collision-structure 'e.Position.y) 
+           'e.Position.x
+           #t))) 
 
 (define-system can-rotate-ccw?    
   #:archetype ActiveTetromino
-  #:on '(collision-structure)
-  #:depends '(compute-collision-structure handle-input)
+  #:on (list collision-structure)
+  #:depends (list compute-collision-structure handle-input)
   #:map (lambda (e) (valid-ccw? e collision-structure)))
 
 (define-system can-rotate-cw?    
   #:archetype ActiveTetromino
-  #:on '(collision-structure)
-  #:depends '(compute-collision-structure handle-input)
+  #:on (list collision-structure)
+  #:depends (list compute-collision-structure handle-input)
   #:map (lambda (e) (valid-cw? e collision-structure)))
 
 (define-system can-move-down?    
   #:archetype ActiveTetromino
-  #:on '(collision-structure)
-  #:depends '(compute-collision-structure handle-input)
+  #:on (list collision-structure)
+  #:depends (list compute-collision-structure handle-input)
   #:map (lambda (e) (vacant-down? e collision-structure)))
 
 (define-system can-move-right?    
   #:archetype ActiveTetromino
-  #:on '(collision-structure)
-  #:depends '(compute-collision-structure handle-input)
+  #:on (list collision-structure)
+  #:depends (list compute-collision-structure handle-input)
   #:map (lambda (e) (vacant-right? e collision-structure)))
 
 (define-system can-move-left?    
   #:archetype ActiveTetromino
-  #:on '(collision-structure)
-  #:depends '(compute-collision-structure handle-input)
-  #:map (lambda (e) (vacant-left? e collision-structure)))
+  #:on (list collision-structure)
+  #:depends (list compute-collision-structure handle-input)
+  #:map (lambda (e) (vacant-left? e collision-structure)))      
+
+(define-system touched-bottom?    
+  #:archetype ActiveTetromino
+  #:on (list clock-tick collision-structure)
+  #:depends (list clock-tick)
+  #:map (lambda (e)
+          (vector-ref 
+           (vector-ref collision-structure (sub1 'e.Position.y)) 
+           'e.Position.x)))
+
+(define-system check-block-overflow   
+  #:archetype ActiveTetromino
+  #:on (list collision-structure)
+  #:out (list touched-bottom?)
+  #:depends (list compute-collision-structure)
+  #:map (lambda (e) (< 'e.Position.y 0)))
+
+(define-system clear-full-rows
+  #:on (list collision-structure)
+  #:depends (list compute-collision-structure touched-bottom?)
+  #:map (lambda (e) 
+          (when #t (set! e (make-vector COLS #f)))))
+
+(define-system increment-timer
+  #:archetype Timer    
+  #:on (list clock-tick)
+  #:depends (list clock-tick)
+  #:map (lambda (e) (set! e.Timer.val (add1 e.Timer.val))))
+
+(define-system increment-score
+  #:archetype Score  
+  #:depends (list increment-timer)
+  #:map (lambda (e) (set! e.Score.val (add1 e.Score.val))))
+
+(define-system hard-drop    
+  #:archetype ActiveTetromino
+  #:on (list (eq? key-event 'down) collision-structure)
+  #:depends (list compute-collision-structure move-down)
+  #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure))))
+
+(define-system soft-drop    
+  #:archetype ActiveTetromino
+  #:on (list (eq? key-event 'd) collision-structure)
+  #:depends (list compute-collision-structure move-down)
+  #:map (lambda (e) (set! e.Position.y (- e.Position.y 3))))
+
+(define-system rotate-ccw    
+  #:archetype ActiveTetromino
+  #:on (list collision-structure)
+  #:depends (list compute-collision-structure can-rotate-ccw?)
+  #:map (lambda (e) (rotate90 (rotate90 (rotate90 e)))))
+
+(define-system rotate-cw    
+  #:archetype ActiveTetromino
+  #:on (list collision-structure)
+  #:depends (list compute-collision-structure can-rotate-cw?)
+  #:map (lambda (e) (rotate90 e)))
+
+(define-system move-down    
+  #:archetype ActiveTetromino
+  #:on (list clock-tick)
+  #:depends (list can-move-down?)
+  #:map (lambda (e)
+          (set! e.Position.y (sub1 e.Position.y))))
+
+(define-system move-right    
+  #:archetype ActiveTetromino
+  #:depends (list can-move-right?)
+  #:map (lambda (e)
+          (set! e.Position.x (add1 e.Position.x))))
+
+(define-system move-left    
+  #:archetype ActiveTetromino
+  #:depends (list can-move-left?)
+  #:map (lambda (e)
+          (set! e.Position.x (sub1 e.Position.x))))
+
+
 
 ; XXX Worlds

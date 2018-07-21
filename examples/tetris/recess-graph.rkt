@@ -18,9 +18,7 @@
     [(_ name [~optional body])
      (begin
        #;#''(name (~? body '()))
-       #'(define name (gensym))
-       )
-     ]))
+       #'(define name (gensym)))]))
 
 ;; list of components
 (define-syntax (define-archetype stx)
@@ -36,9 +34,7 @@
     [(_ name [~optional pred] [~optional body])
      (begin
        #;#''(name (~? pred '()) (~? body '()))
-       #'(define name (gensym))
-       )
-     ]))
+       #'(define name 'name))]))
 
 ;; register a system in the graph and have it print out the graph's
 ;; structure on each call
@@ -49,17 +45,24 @@
         (~optional (~seq #:archetype archetype-name))
         (~optional (~seq #:on new-inputs))
         (~optional (~seq #:out new-outputs))
-        (~optional (~seq #:depends new-dependencies))
+        (~seq #:depends (list new-dependencies:id ...))
         (~optional (~seq #:map map-fn)))
      #'(begin
-         (add-vertex! recess-graph 'system-name)
-         (for-each (lambda (parent)
-                     (begin
-                       (add-vertex! recess-graph 'system-name)
-                       (add-directed-edge! recess-graph parent 'system-name (~? new-inputs ""))
-                       )
-                     )
-                   (~? new-dependencies '()))
-         (display (graphviz recess-graph)))
-     ]))
+         (cond
+           [(not (identifier-binding #'system-name))
+            (define system-name (gensym)) system-name]
+           [(not (identifier-binding #'new-dependencies))
+            (define  (~? new-dependencies '()) (gensym)) new-dependencies] ...)
+                                          
+         (add-vertex! recess-graph 'system-name)            
+         (add-directed-edge! recess-graph 'new-dependencies 'system-name (~? new-inputs "")) ...
+         
+         (display (graphviz recess-graph))
 
+         )]))
+
+(define-syntax (if-defined stx)
+  (syntax-case stx ()
+    [(_ id iftrue iffalse)
+     (let ([where (identifier-binding #'id)])
+       (if where #'iftrue #'iffalse))]))
