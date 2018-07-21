@@ -28,13 +28,19 @@
          (lambda ([arg-id default-expr] ...)
            components ...))]))
 
-;; An event is an identifier [also optionally a predicate and an expression]
+;; An event is an identifier [also optionally a predicate and an init expression]
+
+(define (create-event ident [pred #f] [init #f])
+  (struct event (ident pred init) #:mutable)
+  (event ident pred init)
+  )
+
 (define-syntax (define-event stx)
   (syntax-parse stx
     [(_ name [~optional pred] [~optional body])
      (begin
        #;#''(name (~? pred '()) (~? body '()))
-       #'(define name 'name))]))
+       #'(define name (create-event 'name)))]))
 
 ;; register a system in the graph and have it print out the graph's
 ;; structure on each call
