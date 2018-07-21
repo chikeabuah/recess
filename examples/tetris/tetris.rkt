@@ -137,13 +137,13 @@
 
 (define-system hard-drop    
   #:archetype ActiveTetromino
-  #:on (list '(eq? key-event 'down) collision-structure)
+  #:on (list key-event collision-structure)
   #:depends (list compute-collision-structure move-down)
   #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure))))
 
 (define-system soft-drop    
   #:archetype ActiveTetromino
-  #:on (list '(eq? key-event 'd) collision-structure)
+  #:on (list key-event collision-structure)
   #:depends (list compute-collision-structure move-down)
   #:map (lambda (e) (set! e.Position.y (- e.Position.y 3))))
 

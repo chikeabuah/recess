@@ -54,6 +54,11 @@
           system-name
           (define system-name (gensym)))
 
+         (if-defined
+           new-inputs
+           new-inputs
+           (define new-inputs (gensym))) ...
+
           (if-defined
            new-dependencies
            new-dependencies
