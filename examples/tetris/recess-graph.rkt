@@ -52,17 +52,8 @@
            [(not (identifier-binding #'system-name))
             (define system-name (gensym)) system-name]
            [(not (identifier-binding #'new-dependencies))
-            (define  (~? new-dependencies '()) (gensym)) new-dependencies] ...)
-                                          
+            (define  (~? new-dependencies '()) (gensym)) new-dependencies] ...)                                      
          (add-vertex! recess-graph 'system-name)            
          (add-directed-edge! recess-graph 'new-dependencies 'system-name (~? new-inputs "")) ...
-         
-         (display (graphviz recess-graph))
+         (display (graphviz recess-graph)))]))
 
-         )]))
-
-(define-syntax (if-defined stx)
-  (syntax-case stx ()
-    [(_ id iftrue iffalse)
-     (let ([where (identifier-binding #'id)])
-       (if where #'iftrue #'iffalse))]))

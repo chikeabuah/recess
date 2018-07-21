@@ -15,14 +15,14 @@
 (define ROWS 24)
 
 ;; XXX Components
-(define-component Shape ([which (define-enum Block I J L O S T Z)]))
-(define-component Color ([rgb (random-color)]))
-(define-component Position ([x 0] [y 0]))
+(define-component Shape shape)
+(define-component Color color)
+(define-component Position posn)
 (define-component Held)
 (define-component QueueX)
 (define-component Active) 
-(define-component Score ([val 0])) 
-(define-component Timer ([val 0])) 
+(define-component Score counter) 
+(define-component Timer counter) 
 
 ;;; XXX Archetypes
 
@@ -38,6 +38,10 @@
 
 (define-event key-event key-event?)
 (define-event clock-tick time-event?)
+;; third argument here is for initialization
+;; i'm imagining the collision structure as a 2D array of booleans
+;; true if the corresponding space on the screen is filed with a block
+;; and false otherwise
 (define-event collision-structure vector? (make-vector ROWS (make-vector COLS #f)))
 (define-event game-over) 
 (define-event sound-effect) 
@@ -131,13 +135,13 @@
 
 (define-system hard-drop    
   #:archetype ActiveTetromino
-  #:on (list (eq? key-event 'down) collision-structure)
+  #:on (list '(eq? key-event 'down) collision-structure)
   #:depends (list compute-collision-structure move-down)
   #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure))))
 
 (define-system soft-drop    
   #:archetype ActiveTetromino
-  #:on (list (eq? key-event 'd) collision-structure)
+  #:on (list '(eq? key-event 'd) collision-structure)
   #:depends (list compute-collision-structure move-down)
   #:map (lambda (e) (set! e.Position.y (- e.Position.y 3))))
 
