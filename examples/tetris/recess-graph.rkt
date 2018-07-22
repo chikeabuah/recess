@@ -98,7 +98,7 @@
           (lambda (v)
             (begin
               (add-vertex! recess-graph v)
-              (add-directed-edge! recess-graph v 'system-name)))
+              (add-directed-edge! recess-graph v system-name)))
           new-inputs-expr)
          (display (graphviz recess-graph)))]))
 
