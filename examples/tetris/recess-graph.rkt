@@ -93,7 +93,7 @@
          (unless-defined
           system-name
           (define system-name 'system-name))
-         (add-vertex! recess-graph 'system-name)
+         (add-vertex! recess-graph system-name)
          (for-each
           (lambda (v)
             (begin
