@@ -74,8 +74,7 @@
   #:reduce reduce-body:expr
   ;; the unit of the reduction for the iteration
   ;; `system-state` is bound to the system's current state in zero-expr
-  #:zero zero-expr:expr
-  )
+  #:zero zero-expr:expr)
 
 
 ;; register a system in the graph and have it print out the graph's
