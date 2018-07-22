@@ -44,7 +44,7 @@
 
 ;;; define-system syntax and identifier bindings
 
-#;(define-system system:id
+#;(define-system system-name:id
   ;; a specification of the 'type' of entities that are needed
   #:archetype archetype:id
   ;; initial state of the system
@@ -61,9 +61,9 @@
   ;; `system-state` is bound to the system's current state in pred-expr
   #:enabled pred-expr:expr
   ;; a static specification of which events are inputs
-  #:on list-of-events:expr
+  #:on list-of-input-events:expr
   ;; a static specification of which events may be output
-  #:out list-of-events:expr
+  #:out list-of-output-events:expr
   ;; processes a single entity
   ;; `system-state` is bound to the system's current state in map-body  
   ;; `e` is bound to the entity in map-body
