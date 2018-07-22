@@ -106,7 +106,7 @@
     [(_ ev ...)
      #'(begin
          (cond
-           [(identifier-binding #'ev) (list 'ev ...)] ...))]))
+           [(and (identifier-binding #'ev) ...) (list 'ev ...)]))]))
 
 (define-syntax (unless-defined stx)
   (syntax-case stx ()
