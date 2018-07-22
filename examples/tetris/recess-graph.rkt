@@ -49,22 +49,20 @@
   (syntax-parse stx
     [(_ system-name
         (~optional (~seq #:archetype archetype-name))
-        (~seq #:on new-inputs)
+        (~seq #:on new-inputs-expr)
         (~optional (~seq #:out new-outputs))
         (~optional (~seq #:map map-fn)))
      #'(begin
-         (if-defined
-          system-name
+         (unless-defined
           system-name
           (define system-name 'system-name))
          (add-vertex! recess-graph 'system-name)
          (for-each
           (lambda (v)
             (begin
-              (displayln v)
               (add-vertex! recess-graph v)
               (add-directed-edge! recess-graph v 'system-name)))
-          new-inputs)
+          new-inputs-expr)
          (display (graphviz recess-graph)))]))
 
 (define-syntax (events stx)
@@ -74,8 +72,9 @@
          (cond
            [(identifier-binding #'ev) (define ev (gensym)) (list 'ev ...)] ...))]))
 
-(define-syntax (if-defined stx)
+(define-syntax (unless-defined stx)
   (syntax-case stx ()
-    [(_ id iftrue iffalse)
-     (let ([where (identifier-binding #'id)])
-       (if where #'iftrue #'iffalse))]))
+    [(_ id then)
+       (cond
+         [(identifier-binding #'id) #'id]
+         [else #'then])]))

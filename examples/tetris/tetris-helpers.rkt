@@ -5,9 +5,9 @@
 
 ;; Tetris component types
 
-(struct color (r g b) #:mutable)
-(struct posn (x y) #:mutable)
-(struct counter (x) #:mutable)
+(struct color (r g b))
+(struct posn (x y))
+(struct counter (x))
 
 ;; (define-enum Block I J L O S T Z)
 (struct shape (x))

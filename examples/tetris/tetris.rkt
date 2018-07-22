@@ -33,7 +33,7 @@
 
 ;;; XXX Events
 
-(struct graphic (x y color) #:mutable)
+(struct graphic (x y color))
 
 (define-event key-event key-event?)
 (define-event clock-tick time-event?)
