@@ -1,14 +1,15 @@
 #lang racket/base
-(require (for-syntax syntax/parse))
-(require (for-syntax racket/base))
-(require graph)
+(require (for-syntax syntax/parse)
+         (for-syntax racket/base)
+         (for-syntax racket/list)
+         graph)
 
 (provide
  (all-defined-out)
  (all-from-out racket/base)
  (all-from-out graph))
 
-(define recess-graph (weighted-graph/directed '()))
+(define recess-graph (unweighted-graph/directed '()))
 
 ;; A component is an identifier [and an expression]
 ;; Seems that components should be lambdas eventually
@@ -28,15 +29,15 @@
          (lambda ([arg-id default-expr] ...)
            components ...))]))
 
-;; An event is an identifier [also optionally a predicate and an init expression]
+;; An event is an identifier [also optionally a type predicate]
 
-(define (create-event ident [pred #f] [init #f])
-  (struct event (ident pred init) #:mutable)
-  (event ident pred init))
+(define (create-event ident [pred #f])
+  (struct event (ident pred) #:mutable)
+  (event ident pred))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
-    [(_ name [~optional pred] [~optional body])
+    [(_ name (~optional pred) (~optional body))
      (begin
        #;#''(name (~? pred '()) (~? body '()))
        #'(define name (create-event 'name)))]))
@@ -48,23 +49,30 @@
   (syntax-parse stx
     [(_ system-name
         (~optional (~seq #:archetype archetype-name))
-        (~seq #:on (lst new-inputs ...))
+        (~seq #:on new-inputs)
         (~optional (~seq #:out new-outputs))
         (~optional (~seq #:map map-fn)))
      #'(begin
          (if-defined
           system-name
           system-name
-          (define system-name (gensym)))
-         (if-defined
-           new-inputs
-           new-inputs
-           (define new-inputs (gensym))) ...      
-          (add-vertex! recess-graph 'system-name)
-          (add-vertex! recess-graph 'new-inputs) ...
-          (add-directed-edge! recess-graph 'new-inputs 'system-name "") ...
-          (display (graphviz recess-graph)))]))
+          (define system-name 'system-name))
+         (add-vertex! recess-graph 'system-name)
+         (for-each
+          (lambda (v)
+            (begin
+              (displayln v)
+              (add-vertex! recess-graph v)
+              (add-directed-edge! recess-graph v 'system-name)))
+          new-inputs)
+         (display (graphviz recess-graph)))]))
 
+(define-syntax (events stx)
+  (syntax-parse stx
+    [(_ ev ...)
+     #'(begin
+         (cond
+           [(identifier-binding #'ev) (define ev (gensym)) (list 'ev ...)] ...))]))
 
 (define-syntax (if-defined stx)
   (syntax-case stx ()
