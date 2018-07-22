@@ -71,7 +71,7 @@
   ;; combines the results of many entities
   ;; `system-state` is bound to the system's current state in reduce-body
   ;; `e` is bound to the entity in reduce-body  
-  #reduce reduce-body:expr
+  #:reduce reduce-body:expr
   ;; the unit of the reduction for the iteration
   ;; `system-state` is bound to the system's current state in zero-expr
   #:zero zero-expr:expr
