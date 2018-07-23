@@ -1,13 +1,10 @@
 #lang racket/base
-(require (for-syntax syntax/parse)
-         (for-syntax racket/base)
-         (for-syntax racket/list)
+(require (for-syntax syntax/parse racket/base racket/list)
          graph)
 
 (provide
  (all-defined-out)
- (all-from-out racket/base)
- (all-from-out graph))
+ (all-from-out racket/base graph))
 
 (define recess-graph (unweighted-graph/directed '()))
 
@@ -31,8 +28,9 @@
 
 ;; An event is an identifier [also optionally a type predicate]
 
-(define (create-event ident [pred #f])
-  (struct event (ident pred) #:mutable)
+(struct event (ident pred))
+
+(define (create-event ident [pred (lambda (x) #t)])  
   (event ident pred))
 
 (define-syntax (define-event stx)
@@ -44,37 +42,46 @@
 
 ;;; define-system syntax and identifier bindings
 
+;;; let's list these in the order they should be bound/evaluated
+;;; top->bottom
+
 #;(define-system system-name:id
   ;; a specification of the 'type' of entities that are needed
   #:archetype archetype:id
-  ;; initial state of the system
-  #:init initial-state:expr
-  ;; Runs before the iteration to potentially update the state
-  ;; and gather some data for this iteration
-  ;; `system-state` is bound to the system's current state in pre-body
-  ;; `in-events` is bound to the system's input events in pre-body
-  #:pre pre-body:expr
-  ;; generates the final state of the system for the iteration and then produces output
-  ;; `system-state` is bound to the system's current state in post-body 
-  #:post post-body:expr
-  ;; decides if the query should be run (post will run anyway)
-  ;; `system-state` is bound to the system's current state in pred-expr
-  #:enabled pred-expr:expr
   ;; a static specification of which events are inputs
   #:on list-of-input-events:expr
   ;; a static specification of which events may be output
   #:out list-of-output-events:expr
+  ;; initial state of the system (struct?)
+  #:init initial-state:expr
+  ;; Runs before the iteration to potentially update the state
+  ;; and gather some data for this iteration
+  ;; `system-state` is bound to the system's current state (initial-state) in pre-body
+  ;; `in-events` is bound to the system's list-of-input-events in pre-body
+  ;; returns a `system-state` which has been altered from its initial-state
+  ;; based on the 'in-events` to (system-state x B)
+  #:pre pre-body:expr
+  ;; decides if the query should be run (post will run anyway)
+  ;; `system-state` is bound to the system's current state (system-state x B) in pred-expr
+  ;; returns a boolean
+  #:enabled pred-expr:expr
+  ;; `system-state` is bound to the system's current state (system-state x B) in zero-expr
+  ;; returns the unit of the reduction for the iteration of type A
+  #:zero zero-expr:expr
   ;; processes a single entity
-  ;; `system-state` is bound to the system's current state in map-body  
-  ;; `e` is bound to the entity in map-body
+  ;; `system-state` is bound to the system's current state (system-state x B) in map-body  
+  ;; `e` is bound to the entity from the query for this iteration in map-body
+  ;; processes a single entity and returns a value of type A -- the type of the reduction
   #:map map-body:expr
-  ;; combines the results of many entities
-  ;; `system-state` is bound to the system's current state in reduce-body
-  ;; `e` is bound to the entity in reduce-body  
+  ;; combines the results of many entities (seq A)
+  ;; `system-state` is bound to the system's current state (system-state x B) in reduce-body
+  ;; `e` is bound to the entity in reduce-body
+  ;; returns a value of type A 
   #:reduce reduce-body:expr
-  ;; the unit of the reduction for the iteration
-  ;; `system-state` is bound to the system's current state in zero-expr
-  #:zero zero-expr:expr)
+  ;; generates the final state of the system for the iteration and then produces output
+  ;; `system-state` is bound to the system's current state (system-state x B x A) in post-body
+  ;; returns a list-of-output-events and (system-state x C)
+  #:post post-body:expr)
 
 
 ;; register a system in the graph and have it print out the graph's
