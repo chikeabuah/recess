@@ -114,18 +114,18 @@
 
 (define-syntax (define-system stx)
   (syntax-parse stx
-    [(_ system-name
+    [(_ system-name:id
         (~alt
-         (~optional (~seq #:archetype archetype-name))
-         (~optional (~seq #:on new-inputs-expr))
-         (~optional (~seq #:out new-outputs-expr))
-         (~optional (~seq #:init init-expr))
-         (~optional (~seq #:pre pre-body))
-         (~optional (~seq #:enabled enabled-expr))
-         (~optional (~seq #:zero zero-expr))
-         (~optional (~seq #:map map-fn))
-         (~optional (~seq #:reduce-body reduce-body-expr))
-         (~optional (~seq #:post post-body))) ...)
+         (~optional (~seq #:archetype archetype-name:id))
+         (~optional (~seq #:on new-inputs-expr:expr))
+         (~optional (~seq #:out new-outputs-expr:expr))
+         (~optional (~seq #:init init-expr:expr))
+         (~optional (~seq #:pre pre-body:expr))
+         (~optional (~seq #:enabled enabled-expr:expr))
+         (~optional (~seq #:zero zero-expr:expr))
+         (~optional (~seq #:map map-fn:expr))
+         (~optional (~seq #:reduce-body reduce-body-expr:expr))
+         (~optional (~seq #:post post-body:expr))) ...)
      #'(define system-name
          (let*
              ([archetype (~? archetype-name #f)]
@@ -135,11 +135,22 @@
               [system-state-b (syntax-parameterize
                                   ([state (make-rename-transformer #'system-state)])
                                 (~? pre-body #f))]
-              [is-enabled (~? enabled-expr #f)]
-              [zero (~? zero-expr #f)]
-              [map-body (~? 'map-fn #f)]
-              [reduce-body (~? reduce-body-expr #f)]
-              [post (~? post-body #f)])
+              [is-enabled (syntax-parameterize
+                              ([state (make-rename-transformer #'system-state-b)])
+                            (~? enabled-expr #f))]
+              [entities (query archetype)]
+              [zero (syntax-parameterize
+                        ([state (make-rename-transformer #'system-state-b)])
+                      (~? zero-expr #f))]
+              [map-body (syntax-parameterize
+                            ([state (make-rename-transformer #'system-state)])
+                          (~? 'map-fn #f))]
+              [reduce-body (syntax-parameterize
+                               ([state (make-rename-transformer #'system-state)])
+                             (~? reduce-body-expr #f))]
+              [post (syntax-parameterize
+                        ([state (make-rename-transformer #'system-state)])
+                      (~? post-body #f))])
            (begin
              (displayln system-state-b)
              (add-vertex! recess-graph 'system-name)
@@ -150,7 +161,15 @@
                   (add-directed-edge! recess-graph (event-id ev) 'system-name)))
               (~? input-events))
              (display (graphviz recess-graph)))))]))
-         
+
+;; helper methods
+
+(define (query archetype)
+  ;; TODO: implement
+  (list 1 2 3))
+
+;; syntax parameters
+
 (define-syntax-parameter state
   (lambda (stx)
     (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
@@ -158,6 +177,8 @@
 (define-syntax-parameter e
   (lambda (stx)
     (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
+
+;; helper macros
 
 (define-syntax (events stx)
   (syntax-parse stx
