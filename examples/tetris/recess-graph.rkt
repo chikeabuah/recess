@@ -11,12 +11,18 @@
 ;; A component is an identifier [and an expression]
 ;; Seems that components should be lambdas eventually
 ;; to support initialization
+
+(struct component (ident type))
+
+(define (create-component ident [type (lambda (x) #t)])  
+  (event ident type))
+
 (define-syntax (define-component stx)
   (syntax-parse stx
-    [(_ name [~optional body])
+    [(_ name [~optional type])
      (begin
-       #;#''(name (~? body '()))
-       #'(define name 'name))]))
+       #;#''(name (~? type #f))
+       #'(define name (create-component 'name (~? type #f))))]))
 
 ;; list of components
 (define-syntax (define-archetype stx)
@@ -28,17 +34,17 @@
 
 ;; An event is an identifier [also optionally a type predicate]
 
-(struct event (ident pred))
+(struct event (id type))
 
-(define (create-event ident [pred (lambda (x) #t)])  
-  (event ident pred))
+(define (create-event id [type (lambda (x) #t)])  
+  (event id type))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
-    [(_ name (~optional pred) (~optional body))
+    [(_ name (~optional type))
      (begin
-       #;#''(name (~? pred '()) (~? body '()))
-       #'(define name (create-event 'name)))]))
+       #;#''(name (~? type #f))
+       #'(define name (create-event 'name (~? 'type #f))))]))
 
 ;;; define-system syntax and identifier bindings
 
@@ -83,7 +89,8 @@
     ;; returns a list-of-output-events and (system-state x C)
     #:post post-body:expr)
 
-;; system struct 
+;; system struct
+;; not sure yet if we will use
 #;(struct system (system-name archetype on out init pre enabled zero map-body reduce-body post))
 
 #;(define (create-system
@@ -136,8 +143,8 @@
              (for-each
               (lambda (v)
                 (begin
-                  (add-vertex! recess-graph v)
-                  (add-directed-edge! recess-graph v 'system-name)))
+                  (add-vertex! recess-graph (event-id v))
+                  (add-directed-edge! recess-graph (event-id v) 'system-name)))
               (~? input-events))
              (display (graphviz recess-graph)))))]))
          
