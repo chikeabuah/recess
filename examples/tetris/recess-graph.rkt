@@ -1,6 +1,6 @@
 #lang racket/base
-(require (for-syntax syntax/parse racket/base racket/list)
-         graph)
+(require (for-syntax syntax/parse racket/base)
+         graph racket/stxparam)
 
 (provide
  (all-defined-out)
@@ -94,18 +94,18 @@
 #;(struct system (system-name archetype on out init pre enabled zero map-body reduce-body post))
 
 #;(define (create-system
-         system-name
-         [archetype (lambda (x) #t)]
-         [on (lambda (x) #t)]
-         [out (lambda (x) #t)]
-         [init (lambda (x) #t)]
-         [pre (lambda (x) #t)]
-         [enabled (lambda (x) #t)]
-         [zero (lambda (x) #t)]
-         [map-body (lambda (x) #t)]
-         [reduce-body (lambda (x) #t)]
-         [post (lambda (x) #t)])
-  (system system-name archetype on out init pre enabled zero map-body reduce-body post))
+           system-name
+           [archetype (lambda (x) #t)]
+           [on (lambda (x) #t)]
+           [out (lambda (x) #t)]
+           [init (lambda (x) #t)]
+           [pre (lambda (x) #t)]
+           [enabled (lambda (x) #t)]
+           [zero (lambda (x) #t)]
+           [map-body (lambda (x) #t)]
+           [reduce-body (lambda (x) #t)]
+           [post (lambda (x) #t)])
+    (system system-name archetype on out init pre enabled zero map-body reduce-body post))
 
 
 ;; register a system in the graph and have it print out the graph's
@@ -116,30 +116,32 @@
   (syntax-parse stx
     [(_ system-name
         (~alt
-        (~optional (~seq #:archetype archetype-name))
-        (~optional (~seq #:on new-inputs-expr))
-        (~optional (~seq #:out new-outputs-expr))
-        (~optional (~seq #:init init-expr))
-        (~optional (~seq #:pre pre-body))
-        (~optional (~seq #:enabled enabled-expr))
-        (~optional (~seq #:zero zero-expr))
-        (~optional (~seq #:map map-fn))
-        (~optional (~seq #:reduce-body reduce-body-expr))
-        (~optional (~seq #:post post-body))) ...)
+         (~optional (~seq #:archetype archetype-name))
+         (~optional (~seq #:on new-inputs-expr))
+         (~optional (~seq #:out new-outputs-expr))
+         (~optional (~seq #:init init-expr))
+         (~optional (~seq #:pre pre-body))
+         (~optional (~seq #:enabled enabled-expr))
+         (~optional (~seq #:zero zero-expr))
+         (~optional (~seq #:map map-fn))
+         (~optional (~seq #:reduce-body reduce-body-expr))
+         (~optional (~seq #:post post-body))) ...)
      #'(define system-name
          (let*
              ([archetype (~? archetype-name #f)]
               [input-events new-inputs-expr]
               [output-events (~? new-outputs-expr (list))]
               [system-state (~? init-expr #f)]
-              [system-state-b (~? pre-body #f)]
+              [system-state-b (syntax-parameterize
+                                  ([state (make-rename-transformer #'system-state)])
+                                (~? pre-body #f))]
               [is-enabled (~? enabled-expr #f)]
               [zero (~? zero-expr #f)]
               [map-body (~? 'map-fn #f)]
               [reduce-body (~? reduce-body-expr #f)]
               [post (~? post-body #f)])
            (begin
-             (displayln system-state)
+             (displayln system-state-b)
              (add-vertex! recess-graph 'system-name)
              (for-each
               (lambda (ev)
@@ -149,6 +151,13 @@
               (~? input-events))
              (display (graphviz recess-graph)))))]))
          
+(define-syntax-parameter state
+  (lambda (stx)
+    (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
+
+(define-syntax-parameter e
+  (lambda (stx)
+    (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
 
 (define-syntax (events stx)
   (syntax-parse stx

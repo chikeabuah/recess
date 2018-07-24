@@ -49,6 +49,7 @@
   #:archetype ActiveTetromino
   #:on (events collision-structure/e move-down touched-bottom?)
   #:init 5
+  #:pre (+ state 3)
   #:map (lambda (e) (tetro-to-blocks e))) 
 
 (define-system compute-collision-structure    
