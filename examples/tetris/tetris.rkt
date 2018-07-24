@@ -35,120 +35,120 @@
 
 (struct graphic (x y color))
 
-(define-event key-event key-event?)
-(define-event clock-tick time-event?)
-(define-event collision-structure vector?)
-(define-event game-over) 
-(define-event sound-effect) 
-(define-event music)
-(define-event graphic-event graphic?) 
+(define-event key/e key-event)
+(define-event clock-tick/e time-event)
+(define-event collision-structure/e vector)
+(define-event game-over/e) 
+(define-event sound-effect/e) 
+(define-event music/e)
+(define-event graphic-event/e graphic) 
 
 ;; XXX Systems
 
 (define-system tetros-to-blocks   
   #:archetype ActiveTetromino
-  #:on (events collision-structure move-down touched-bottom?)
+  #:on (events collision-structure/e move-down touched-bottom?)
   #:map (lambda (e) (tetro-to-blocks e))) 
 
 (define-system compute-collision-structure    
   #:archetype Block
-  #:on (events collision-structure tetros-to-blocks touched-bottom?)
-  #:out (list collision-structure)
+  #:on (events collision-structure/e tetros-to-blocks touched-bottom?)
+  #:out (list collision-structure/e)
   #:map (lambda (e) 
           (vector-set! 
-           (vector-ref collision-structure 'e.Position.y) 
+           (vector-ref collision-structure/e 'e.Position.y) 
            'e.Position.x
            #t))) 
 
 (define-system can-rotate-ccw?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure compute-collision-structure key-event)
-  #:map (lambda (e) (valid-ccw? e collision-structure)))
+  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:map (lambda (e) (valid-ccw? e collision-structure/e)))
 
 (define-system can-rotate-cw?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure compute-collision-structure key-event)
-  #:map (lambda (e) (valid-cw? e collision-structure)))
+  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:map (lambda (e) (valid-cw? e collision-structure/e)))
 
 (define-system can-move-down?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure compute-collision-structure key-event)
-  #:map (lambda (e) (vacant-down? e collision-structure)))
+  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:map (lambda (e) (vacant-down? e collision-structure/e)))
 
 (define-system can-move-right?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure compute-collision-structure key-event)
-  #:map (lambda (e) (vacant-right? e collision-structure)))
+  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:map (lambda (e) (vacant-right? e collision-structure/e)))
 
 (define-system can-move-left?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure compute-collision-structure key-event)
-  #:map (lambda (e) (vacant-left? e collision-structure)))      
+  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:map (lambda (e) (vacant-left? e collision-structure/e)))      
 
 (define-system touched-bottom?    
   #:archetype ActiveTetromino
-  #:on (events clock-tick collision-structure)
+  #:on (events clock-tick/e collision-structure/e)
   #:map (lambda (e)
           (vector-ref 
-           (vector-ref collision-structure (sub1 'e.Position.y)) 
+           (vector-ref collision-structure/e (sub1 'e.Position.y)) 
            'e.Position.x)))
 
 (define-system check-block-overflow   
   #:archetype ActiveTetromino
-  #:on (events collision-structure compute-collision-structure)
+  #:on (events collision-structure/e compute-collision-structure)
   #:out (list touched-bottom?)
   #:map (lambda (e) (< 'e.Position.y 0)))
 
 (define-system clear-full-rows
-  #:on (events collision-structure compute-collision-structure touched-bottom?)
+  #:on (events collision-structure/e compute-collision-structure touched-bottom?)
   #:map (lambda (e) 
           (when #t (set! e (make-vector COLS #f)))))
 
 (define-system increment-timer
   #:archetype Timer    
-  #:on (events clock-tick)
+  #:on (events clock-tick/e)
   #:map (lambda (e) (set! e.Timer.val (add1 e.Timer.val))))
 
 (define-system increment-score
   #:archetype Score
-  #:on (events collision-structure increment-timer)
+  #:on (events collision-structure/e increment-timer)
   #:map (lambda (e) (set! e.Score.val (add1 e.Score.val))))
 
 (define-system hard-drop    
   #:archetype ActiveTetromino
-  #:on (events key-event collision-structure compute-collision-structure move-down)
-  #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure))))
+  #:on (events key/e collision-structure/e compute-collision-structure move-down)
+  #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure/e))))
 
 (define-system soft-drop    
   #:archetype ActiveTetromino
-  #:on (events key-event collision-structure compute-collision-structure move-down)
+  #:on (events key/e collision-structure/e compute-collision-structure move-down)
   #:map (lambda (e) (set! e.Position.y (- e.Position.y 3))))
 
 (define-system rotate-ccw    
   #:archetype ActiveTetromino
-  #:on (events collision-structure compute-collision-structure can-rotate-ccw?)
+  #:on (events collision-structure/e compute-collision-structure can-rotate-ccw?)
   #:map (lambda (e) (rotate90 (rotate90 (rotate90 e)))))
 
 (define-system rotate-cw    
   #:archetype ActiveTetromino
-  #:on (events collision-structure compute-collision-structure can-rotate-cw?)
+  #:on (events collision-structure/e compute-collision-structure can-rotate-cw?)
   #:map (lambda (e) (rotate90 e)))
 
 (define-system move-down    
   #:archetype ActiveTetromino
-  #:on (events clock-tick can-move-down?)
+  #:on (events clock-tick/e can-move-down?)
   #:map (lambda (e)
           (set! e.Position.y (sub1 e.Position.y))))
 
 (define-system move-right    
   #:archetype ActiveTetromino
-  #:on (events collision-structure can-move-right?)
+  #:on (events collision-structure/e can-move-right?)
   #:map (lambda (e)
           (set! e.Position.x (add1 e.Position.x))))
 
 (define-system move-left    
   #:archetype ActiveTetromino
-  #:on (events collision-structure can-move-left?)
+  #:on (events collision-structure/e can-move-left?)
   #:map (lambda (e)
           (set! e.Position.x (sub1 e.Position.x))))
 
