@@ -153,20 +153,24 @@
                       (~? post-body #f))])
            (begin
              (displayln system-state-b)
-             (add-vertex! recess-graph 'system-name)
-             (for-each
-              (lambda (ev)
-                (begin
-                  (add-vertex! recess-graph (event-id ev))
-                  (add-directed-edge! recess-graph (event-id ev) 'system-name)))
-              (~? input-events))
-             (display (graphviz recess-graph)))))]))
+             (add-to-graph 'system-name input-events))))]))
 
 ;; helper methods
 
 (define (query archetype)
   ;; TODO: implement
   (list 1 2 3))
+
+(define (add-to-graph system-name input-events)
+  (begin
+    (add-vertex! recess-graph system-name)
+    (for-each
+     (lambda (ev)
+       (begin
+         (add-vertex! recess-graph (event-id ev))
+         (add-directed-edge! recess-graph (event-id ev) system-name)))
+     input-events)
+    (display (graphviz recess-graph))))
 
 ;; syntax parameters
 
