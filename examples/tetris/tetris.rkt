@@ -48,6 +48,7 @@
 (define-system tetros-to-blocks   
   #:archetype ActiveTetromino
   #:on (events collision-structure/e move-down touched-bottom?)
+  #:init 5
   #:map (lambda (e) (tetro-to-blocks e))) 
 
 (define-system compute-collision-structure    

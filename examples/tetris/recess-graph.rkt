@@ -58,7 +58,7 @@
     #:on list-of-input-events:expr
     ;; a static specification of which events may be output
     #:out list-of-output-events:expr
-    ;; initial state of the system (struct?)
+    ;; initial state of the system
     #:init initial-state:expr
     ;; Runs before the iteration to potentially update the state
     ;; and gather some data for this iteration
@@ -115,6 +115,7 @@
 (define-syntax (define-system stx)
   (syntax-parse stx
     [(_ system-name
+        (~alt
         (~optional (~seq #:archetype archetype-name))
         (~optional (~seq #:on new-inputs-expr))
         (~optional (~seq #:out new-outputs-expr))
@@ -124,12 +125,12 @@
         (~optional (~seq #:zero zero-expr))
         (~optional (~seq #:map map-fn))
         (~optional (~seq #:reduce-body reduce-body-expr))
-        (~optional (~seq #:post post-body)))
+        (~optional (~seq #:post post-body))) ...)
      #'(define system-name
          (let*
              ([archetype (~? archetype-name #f)]
-              [input-events (map create-event new-inputs-expr)]
-              [output-events (map create-event (~? new-outputs-expr (list)))]
+              [input-events new-inputs-expr]
+              [output-events (~? new-outputs-expr (list))]
               [system-state (~? init-expr #f)]
               [system-state-b (~? pre-body #f)]
               [is-enabled (~? enabled-expr #f)]
@@ -138,13 +139,13 @@
               [reduce-body (~? reduce-body-expr #f)]
               [post (~? post-body #f)])
            (begin
-             #;(displayln input-events)
+             (displayln system-state)
              (add-vertex! recess-graph 'system-name)
              (for-each
-              (lambda (v)
+              (lambda (ev)
                 (begin
-                  (add-vertex! recess-graph (event-id v))
-                  (add-directed-edge! recess-graph (event-id v) 'system-name)))
+                  (add-vertex! recess-graph (event-id ev))
+                  (add-directed-edge! recess-graph (event-id ev) 'system-name)))
               (~? input-events))
              (display (graphviz recess-graph)))))]))
          
@@ -152,6 +153,4 @@
 (define-syntax (events stx)
   (syntax-parse stx
     [(_ ev ...)
-     #'(begin
-         (cond
-           [(and (identifier-binding #'ev) ...) (list 'ev ...)]))]))
+     #'(map create-event (list 'ev ...))]))
