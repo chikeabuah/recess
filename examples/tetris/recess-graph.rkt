@@ -12,10 +12,10 @@
 ;; Seems that components should be lambdas eventually
 ;; to support initialization
 
-(struct component (ident type))
+(struct component (id type))
 
-(define (create-component ident [type (lambda (x) #t)])  
-  (event ident type))
+(define (create-component id [type (lambda (x) #t)])  
+  (event id type))
 
 (define-syntax (define-component stx)
   (syntax-parse stx
@@ -138,7 +138,7 @@
               [reduce-body (~? reduce-body-expr #f)]
               [post (~? post-body #f)])
            (begin
-             (displayln input-events)
+             #;(displayln input-events)
              (add-vertex! recess-graph 'system-name)
              (for-each
               (lambda (v)
