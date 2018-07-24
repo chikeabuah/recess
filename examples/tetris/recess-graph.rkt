@@ -16,7 +16,7 @@
     [(_ name [~optional body])
      (begin
        #;#''(name (~? body '()))
-       #'(define name (gensym)))]))
+       #'(define name 'name))]))
 
 ;; list of components
 (define-syntax (define-archetype stx)
@@ -84,9 +84,9 @@
     #:post post-body:expr)
 
 ;; system struct 
-(struct system (system-name archetype on out init pre enabled zero map-body reduce-body post))
+#;(struct system (system-name archetype on out init pre enabled zero map-body reduce-body post))
 
-(define (create-system
+#;(define (create-system
          system-name
          [archetype (lambda (x) #t)]
          [on (lambda (x) #t)]
@@ -97,8 +97,7 @@
          [zero (lambda (x) #t)]
          [map-body (lambda (x) #t)]
          [reduce-body (lambda (x) #t)]
-         [post (lambda (x) #t)]
-         [pred (lambda (x) #t)])
+         [post (lambda (x) #t)])
   (system system-name archetype on out init pre enabled zero map-body reduce-body post))
 
 
@@ -111,20 +110,37 @@
     [(_ system-name
         (~optional (~seq #:archetype archetype-name))
         (~optional (~seq #:on new-inputs-expr))
-        (~optional (~seq #:out new-outputs))
-        (~optional (~seq #:map map-fn)))
-     #'(begin
-         (unless-defined
-          system-name
-          (define system-name 'system-name))
-         (add-vertex! recess-graph system-name)
-         (for-each
-          (lambda (v)
-            (begin
-              (add-vertex! recess-graph v)
-              (add-directed-edge! recess-graph v system-name)))
-          (~? new-inputs-expr))
-         (display (graphviz recess-graph)))]))
+        (~optional (~seq #:out new-outputs-expr))
+        (~optional (~seq #:init init-expr))
+        (~optional (~seq #:pre pre-body))
+        (~optional (~seq #:enabled enabled-expr))
+        (~optional (~seq #:zero zero-expr))
+        (~optional (~seq #:map map-fn))
+        (~optional (~seq #:reduce-body reduce-body-expr))
+        (~optional (~seq #:post post-body)))
+     #'(define system-name
+         (let*
+             ([archetype (~? archetype-name #f)]
+              [input-events (map create-event new-inputs-expr)]
+              [output-events (map create-event (~? new-outputs-expr (list)))]
+              [system-state (~? init-expr #f)]
+              [system-state-b (~? pre-body #f)]
+              [is-enabled (~? enabled-expr #f)]
+              [zero (~? zero-expr #f)]
+              [map-body (~? 'map-fn #f)]
+              [reduce-body (~? reduce-body-expr #f)]
+              [post (~? post-body #f)])
+           (begin
+             (displayln input-events)
+             (add-vertex! recess-graph 'system-name)
+             (for-each
+              (lambda (v)
+                (begin
+                  (add-vertex! recess-graph v)
+                  (add-directed-edge! recess-graph v 'system-name)))
+              (~? input-events))
+             (display (graphviz recess-graph)))))]))
+         
 
 (define-syntax (events stx)
   (syntax-parse stx
@@ -132,10 +148,3 @@
      #'(begin
          (cond
            [(and (identifier-binding #'ev) ...) (list 'ev ...)]))]))
-
-(define-syntax (unless-defined stx)
-  (syntax-case stx ()
-    [(_ id then)
-     (cond
-       [(identifier-binding #'id) #'id]
-       [else #'then])]))
