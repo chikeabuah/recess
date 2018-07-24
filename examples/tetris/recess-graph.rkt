@@ -124,35 +124,38 @@
          (~optional (~seq #:enabled enabled-expr:expr))
          (~optional (~seq #:zero zero-expr:expr))
          (~optional (~seq #:map map-fn:expr))
-         (~optional (~seq #:reduce-body reduce-body-expr:expr))
-         (~optional (~seq #:post post-body:expr))) ...)
+         (~optional (~seq #:reduce reduce-body-expr:expr))
+         (~optional (~seq #:post post-body-expr:expr))) ...)
      #'(define system-name
          (let*
-             ([archetype (~? archetype-name #f)]
+             ([archetype (~? archetype-name (lambda (x) #t))]
               [input-events new-inputs-expr]
               [output-events (~? new-outputs-expr (list))]
-              [system-state (~? init-expr #f)]
+              [system-state (~? init-expr (lambda (x) #t))]
               [system-state-b (syntax-parameterize
                                   ([state (make-rename-transformer #'system-state)])
-                                (~? pre-body #f))]
+                                (~? pre-body (lambda (x) #t)))]
               [is-enabled (syntax-parameterize
                               ([state (make-rename-transformer #'system-state-b)])
-                            (~? enabled-expr #f))]
+                            (~? enabled-expr (lambda (x) #t)))]
               [entities (query archetype)]
               [zero (syntax-parameterize
                         ([state (make-rename-transformer #'system-state-b)])
-                      (~? zero-expr #f))]
+                      (~? zero-expr (lambda (x) #t)))]
               [map-body (syntax-parameterize
                             ([state (make-rename-transformer #'system-state)])
-                          (~? 'map-fn #f))]
+                          (~? 'map-fn (lambda (x) #t)))]
               [reduce-body (syntax-parameterize
                                ([state (make-rename-transformer #'system-state)])
-                             (~? reduce-body-expr #f))]
+                             (~? reduce-body-expr (lambda (x y) #t)))]
               [post (syntax-parameterize
                         ([state (make-rename-transformer #'system-state)])
-                      (~? post-body #f))])
+                      (~? post-body-expr (lambda (x) #t)))])
            (begin
-             (displayln system-state-b)
+             #;(displayln system-state-b)
+             '(map map-body entities)
+             (foldl reduce-body zero entities)
+             (post 1)
              (add-to-graph 'system-name input-events))))]))
 
 ;; helper methods
@@ -175,10 +178,6 @@
 ;; syntax parameters
 
 (define-syntax-parameter state
-  (lambda (stx)
-    (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
-
-(define-syntax-parameter e
   (lambda (stx)
     (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
 

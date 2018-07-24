@@ -49,6 +49,10 @@
   #:archetype ActiveTetromino
   #:on (events collision-structure/e move-down touched-bottom?)
   #:init 5
+  #:enabled #t
+  #:zero state
+  #:reduce (lambda (x y) #t)
+  #:post (lambda (x) #t)
   #:pre (+ state 3)
   #:map (lambda (e) (tetro-to-blocks e))) 
 
