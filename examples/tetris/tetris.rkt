@@ -58,7 +58,7 @@
 
 (define-system compute-collision-structure    
   #:archetype Block
-  #:on (events collision-structure/e tetros-to-blocks touched-bottom?)
+  #:on (events tetros-to-blocks touched-bottom?)
   #:out (events collision-structure/e)
   #:map (λ (e) 
           (vector-set! 
