@@ -51,16 +51,16 @@
   #:init 5
   #:enabled #t
   #:zero state
-  #:reduce (lambda (x y) #t)
-  #:post (lambda (x) #t)
+  #:reduce (λ (x y) #t)
+  #:post (λ (x) #t)
   #:pre (+ state 3)
-  #:map (lambda (e) (tetro-to-blocks e))) 
+  #:map (λ (e) (tetro-to-blocks e))) 
 
 (define-system compute-collision-structure    
   #:archetype Block
   #:on (events collision-structure/e tetros-to-blocks touched-bottom?)
   #:out (events collision-structure/e)
-  #:map (lambda (e) 
+  #:map (λ (e) 
           (vector-set! 
            (vector-ref collision-structure/e 'e.Position.y) 
            'e.Position.x
@@ -69,38 +69,38 @@
 (define-system can-rotate-ccw?    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e key/e)
-  #:map (lambda (e) (valid-ccw? e collision-structure/e)))
+  #:map (λ (e) (valid-ccw? e collision-structure/e)))
 
 (define-system can-rotate-cw?    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e key/e)
-  #:map (lambda (e) (valid-cw? e collision-structure/e)))
+  #:map (λ (e) (valid-cw? e collision-structure/e)))
 
 (define-system can-move-down?    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e key/e)
-  #:map (lambda (e) (vacant-down? e collision-structure/e)))
+  #:map (λ (e) (vacant-down? e collision-structure/e)))
 
 (define-system can-move-right?    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e key/e)
-  #:map (lambda (e) (vacant-right? e collision-structure/e)))
+  #:map (λ (e) (vacant-right? e collision-structure/e)))
 
 (define-system can-move-left?    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e key/e)
-  #:map (lambda (e) (vacant-left? e collision-structure/e)))
+  #:map (λ (e) (vacant-left? e collision-structure/e)))
 
 (define-system new-tetro
   #:archetype ActiveTetromino
   #:on (events touched-bottom?)
-  #:post (lambda (x) #t) ;; create new entity
+  #:post (λ (x) #t) ;; create new entity
   )
 
 (define-system touched-bottom?    
   #:archetype ActiveTetromino
   #:on (events clock-tick/e collision-structure/e)
-  #:map (lambda (e)
+  #:map (λ (e)
           (vector-ref 
            (vector-ref collision-structure/e (sub1 'e.Position.y)) 
            'e.Position.x)))
@@ -108,59 +108,59 @@
 (define-system check-block-overflow   
   #:archetype ActiveTetromino
   #:on (events collision-structure/e)
-  #:map (lambda (e) (< 'e.Position.y 0)))
+  #:map (λ (e) (< 'e.Position.y 0)))
 
 (define-system clear-full-rows
   #:on (events collision-structure/e touched-bottom?)
-  #:map (lambda (e) 
+  #:map (λ (e) 
           (when #t (set! e (make-vector COLS #f)))))
 
 (define-system increment-timer
   #:archetype Timer    
   #:on (events clock-tick/e)
-  #:map (lambda (e) (set! e.Timer.val (add1 e.Timer.val))))
+  #:map (λ (e) (set! e.Timer.val (add1 e.Timer.val))))
 
 (define-system increment-score
   #:archetype Score
   #:on (events collision-structure/e increment-timer)
-  #:map (lambda (e) (set! e.Score.val (add1 e.Score.val))))
+  #:map (λ (e) (set! e.Score.val (add1 e.Score.val))))
 
 (define-system hard-drop    
   #:archetype ActiveTetromino
   #:on (events key/e collision-structure/e move-down)
-  #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure/e))))
+  #:map (λ (e) (set! e.Position.y (lowest-y e collision-structure/e))))
 
 (define-system soft-drop    
   #:archetype ActiveTetromino
   #:on (events key/e collision-structure/e move-down)
-  #:map (lambda (e) (set! e.Position.y (- e.Position.y 3))))
+  #:map (λ (e) (set! e.Position.y (- e.Position.y 3))))
 
 (define-system rotate-ccw    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e can-rotate-ccw?)
-  #:map (lambda (e) (rotate90 (rotate90 (rotate90 e)))))
+  #:map (λ (e) (rotate90 (rotate90 (rotate90 e)))))
 
 (define-system rotate-cw    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e can-rotate-cw?)
-  #:map (lambda (e) (rotate90 e)))
+  #:map (λ (e) (rotate90 e)))
 
 (define-system move-down    
   #:archetype ActiveTetromino
   #:on (events clock-tick/e can-move-down?)
-  #:map (lambda (e)
+  #:map (λ (e)
           (set! e.Position.y (sub1 e.Position.y))))
 
 (define-system move-right    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e can-move-right?)
-  #:map (lambda (e)
+  #:map (λ (e)
           (set! e.Position.x (add1 e.Position.x))))
 
 (define-system move-left    
   #:archetype ActiveTetromino
   #:on (events collision-structure/e can-move-left?)
-  #:map (lambda (e)
+  #:map (λ (e)
           (set! e.Position.x (sub1 e.Position.x))))
 
 ; XXX Worlds

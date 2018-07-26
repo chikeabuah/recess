@@ -9,12 +9,12 @@
 (define recess-graph (unweighted-graph/directed '()))
 
 ;; A component is an identifier [and an expression]
-;; Seems that components should be lambdas eventually
+;; Seems that components should be λs eventually
 ;; to support initialization
 
 (struct component (id type))
 
-(define (create-component id [type (lambda (x) #t)])  
+(define (create-component id [type (λ (x) #t)])  
   (event id type))
 
 (define-syntax (define-component stx)
@@ -29,7 +29,7 @@
   (syntax-parse stx
     [(_ (name [arg-id default-expr] ...) components ...)
      #'(define name
-         (lambda ([arg-id default-expr] ...)
+         (λ ([arg-id default-expr] ...)
            components ...))]))
 
 ;; An event is an identifier [also optionally a type predicate]
@@ -40,7 +40,7 @@
 
 (struct event (id type))
 
-(define (create-event id [type (lambda (x) #t)])  
+(define (create-event id [type (λ (x) #t)])  
   (event id type))
 
 (define-syntax (define-event stx)
@@ -100,15 +100,15 @@
 #;(define (create-system
            system-name
            [archetype (λ (x) #t)]
-           [on (lambda (x) #t)]
-           [out (lambda (x) #t)]
-           [init (lambda (x) #t)]
-           [pre (lambda (x) #t)]
-           [enabled (lambda (x) #t)]
-           [zero (lambda (x) #t)]
-           [map-body (lambda (x) #t)]
-           [reduce-body (lambda (x) #t)]
-           [post (lambda (x) #t)])
+           [on (λ (x) #t)]
+           [out (λ (x) #t)]
+           [init (λ (x) #t)]
+           [pre (λ (x) #t)]
+           [enabled (λ (x) #t)]
+           [zero (λ (x) #t)]
+           [map-body (λ (x) #t)]
+           [reduce-body (λ (x) #t)]
+           [post (λ (x) #t)])
     (system system-name archetype on out init pre enabled zero map-body reduce-body post))
 
 
@@ -132,29 +132,29 @@
          (~optional (~seq #:post post-body-expr:expr))) ...)
      #'(define system-name
          (let*
-             ([archetype (~? archetype-name (lambda (x) #t))]
+             ([archetype (~? archetype-name (λ (x) #t))]
               [input-events (~? new-inputs-expr null)]
               [output-events (~? new-outputs-expr null)]
-              [system-state (~? init-expr (lambda (x) #t))]
+              [system-state (~? init-expr (λ (x) #t))]
               [system-state-b (syntax-parameterize
                                   ([state (make-rename-transformer #'system-state)])
-                                (~? pre-body (lambda (x) #t)))]
+                                (~? pre-body (λ (x) #t)))]
               [is-enabled (syntax-parameterize
                               ([state (make-rename-transformer #'system-state-b)])
-                            (~? enabled-expr (lambda (x) #t)))]
+                            (~? enabled-expr (λ (x) #t)))]
               [entities (query archetype)]
               [zero (syntax-parameterize
                         ([state (make-rename-transformer #'system-state-b)])
-                      (~? zero-expr (lambda (x) #t)))]
+                      (~? zero-expr (λ (x) #t)))]
               [map-body (syntax-parameterize
                             ([state (make-rename-transformer #'system-state)])
-                          (~? 'map-fn (lambda (x) #t)))]
+                          (~? 'map-fn (λ (x) #t)))]
               [reduce-body (syntax-parameterize
                                ([state (make-rename-transformer #'system-state)])
-                             (~? reduce-body-expr (lambda (x y) #t)))]
+                             (~? reduce-body-expr (λ (x y) #t)))]
               [post (syntax-parameterize
                         ([state (make-rename-transformer #'system-state)])
-                      (~? post-body-expr (lambda (x) #t)))])
+                      (~? post-body-expr (λ (x) #t)))])
            (begin
              #;(displayln system-state-b)
              '(map map-body entities)
@@ -167,7 +167,7 @@
 
 (struct entity (id cmpnts archetype) #:mutable)
 
-(define (create-entity id [cmpnts (lambda (x) #t)] [archetype (lambda (x) #t)])  
+(define (create-entity id [cmpnts (λ (x) #t)] [archetype (λ (x) #t)])  
   (entity id cmpnts archetype))
 
 ;; helper methods
@@ -180,13 +180,13 @@
   (begin
     (add-vertex! recess-graph system-name)
     (for-each
-     (lambda (ev)
+     (λ (ev)
        (begin
          (add-vertex! recess-graph (event-id ev))
          (add-directed-edge! recess-graph (event-id ev) system-name)))
      input-events)
     (for-each
-     (lambda (ev)
+     (λ (ev)
        (begin
          (add-vertex! recess-graph (event-id ev))
          (add-directed-edge! recess-graph system-name (event-id ev))))
@@ -196,7 +196,7 @@
 ;; syntax parameters
 
 (define-syntax-parameter state
-  (lambda (stx)
+  (λ (stx)
     (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
 
 ;; helper macros
