@@ -34,6 +34,10 @@
 
 ;; An event is an identifier [also optionally a type predicate]
 
+;; event ideas:
+;; requiring a system as an implicit event = requiring all of that system's output events
+;; in addition to an implicit event matching the system's name 
+
 (struct event (id type))
 
 (define (create-event id [type (lambda (x) #t)])  
@@ -95,7 +99,7 @@
 
 #;(define (create-system
            system-name
-           [archetype (lambda (x) #t)]
+           [archetype (λ (x) #t)]
            [on (lambda (x) #t)]
            [out (lambda (x) #t)]
            [init (lambda (x) #t)]
@@ -129,8 +133,8 @@
      #'(define system-name
          (let*
              ([archetype (~? archetype-name (lambda (x) #t))]
-              [input-events new-inputs-expr]
-              [output-events (~? new-outputs-expr (list))]
+              [input-events (~? new-inputs-expr null)]
+              [output-events (~? new-outputs-expr null)]
               [system-state (~? init-expr (lambda (x) #t))]
               [system-state-b (syntax-parameterize
                                   ([state (make-rename-transformer #'system-state)])
@@ -156,7 +160,15 @@
              '(map map-body entities)
              (foldl reduce-body zero entities)
              (post 1)
-             (add-to-graph 'system-name input-events))))]))
+             (add-to-graph 'system-name input-events output-events))))]))
+
+
+;; entities
+
+(struct entity (id cmpnts archetype) #:mutable)
+
+(define (create-entity id [cmpnts (lambda (x) #t)] [archetype (lambda (x) #t)])  
+  (entity id cmpnts archetype))
 
 ;; helper methods
 
@@ -164,7 +176,7 @@
   ;; TODO: implement
   (list 1 2 3))
 
-(define (add-to-graph system-name input-events)
+(define (add-to-graph system-name input-events output-events)
   (begin
     (add-vertex! recess-graph system-name)
     (for-each
@@ -173,6 +185,12 @@
          (add-vertex! recess-graph (event-id ev))
          (add-directed-edge! recess-graph (event-id ev) system-name)))
      input-events)
+    (for-each
+     (lambda (ev)
+       (begin
+         (add-vertex! recess-graph (event-id ev))
+         (add-directed-edge! recess-graph system-name (event-id ev))))
+     output-events)
     (display (graphviz recess-graph))))
 
 ;; syntax parameters

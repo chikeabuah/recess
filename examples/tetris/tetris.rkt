@@ -59,7 +59,7 @@
 (define-system compute-collision-structure    
   #:archetype Block
   #:on (events collision-structure/e tetros-to-blocks touched-bottom?)
-  #:out (list collision-structure/e)
+  #:out (events collision-structure/e)
   #:map (lambda (e) 
           (vector-set! 
            (vector-ref collision-structure/e 'e.Position.y) 
@@ -68,28 +68,34 @@
 
 (define-system can-rotate-ccw?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:on (events collision-structure/e key/e)
   #:map (lambda (e) (valid-ccw? e collision-structure/e)))
 
 (define-system can-rotate-cw?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:on (events collision-structure/e key/e)
   #:map (lambda (e) (valid-cw? e collision-structure/e)))
 
 (define-system can-move-down?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:on (events collision-structure/e key/e)
   #:map (lambda (e) (vacant-down? e collision-structure/e)))
 
 (define-system can-move-right?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure/e compute-collision-structure key/e)
+  #:on (events collision-structure/e key/e)
   #:map (lambda (e) (vacant-right? e collision-structure/e)))
 
 (define-system can-move-left?    
   #:archetype ActiveTetromino
-  #:on (events collision-structure/e compute-collision-structure key/e)
-  #:map (lambda (e) (vacant-left? e collision-structure/e)))      
+  #:on (events collision-structure/e key/e)
+  #:map (lambda (e) (vacant-left? e collision-structure/e)))
+
+(define-system new-tetro
+  #:archetype ActiveTetromino
+  #:on (events touched-bottom?)
+  #:post (lambda (x) #t) ;; create new entity
+  )
 
 (define-system touched-bottom?    
   #:archetype ActiveTetromino
@@ -101,12 +107,11 @@
 
 (define-system check-block-overflow   
   #:archetype ActiveTetromino
-  #:on (events collision-structure/e compute-collision-structure)
-  #:out (list touched-bottom?)
+  #:on (events collision-structure/e)
   #:map (lambda (e) (< 'e.Position.y 0)))
 
 (define-system clear-full-rows
-  #:on (events collision-structure/e compute-collision-structure touched-bottom?)
+  #:on (events collision-structure/e touched-bottom?)
   #:map (lambda (e) 
           (when #t (set! e (make-vector COLS #f)))))
 
@@ -122,22 +127,22 @@
 
 (define-system hard-drop    
   #:archetype ActiveTetromino
-  #:on (events key/e collision-structure/e compute-collision-structure move-down)
+  #:on (events key/e collision-structure/e move-down)
   #:map (lambda (e) (set! e.Position.y (lowest-y e collision-structure/e))))
 
 (define-system soft-drop    
   #:archetype ActiveTetromino
-  #:on (events key/e collision-structure/e compute-collision-structure move-down)
+  #:on (events key/e collision-structure/e move-down)
   #:map (lambda (e) (set! e.Position.y (- e.Position.y 3))))
 
 (define-system rotate-ccw    
   #:archetype ActiveTetromino
-  #:on (events collision-structure/e compute-collision-structure can-rotate-ccw?)
+  #:on (events collision-structure/e can-rotate-ccw?)
   #:map (lambda (e) (rotate90 (rotate90 (rotate90 e)))))
 
 (define-system rotate-cw    
   #:archetype ActiveTetromino
-  #:on (events collision-structure/e compute-collision-structure can-rotate-cw?)
+  #:on (events collision-structure/e can-rotate-cw?)
   #:map (lambda (e) (rotate90 e)))
 
 (define-system move-down    
