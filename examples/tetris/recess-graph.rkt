@@ -117,10 +117,11 @@
     (~seq #:out [evt:expr evt-val-body:expr ...]) ...)
 
 ;; system struct
-(struct system (name in state pre enabled query map reduce post out))
+(struct system (name body in state pre enabled query map reduce post out))
 
 (define (create-system
          name
+         body
          [in (λ (x) #t)]
          [state (λ (x) #t)]
          [pre (λ (x) #t)]
@@ -130,7 +131,7 @@
          [reduce (λ (x) #t)]
          [post (λ (x) #t)]
          [out (λ (x) #t)])
-  (system name in state pre enabled query map reduce post out))
+  (system name body in state pre enabled query map reduce post out))
 
 ;; register a system in the graph and have it print out the graph's
 ;; structure on each call
@@ -151,37 +152,52 @@
      (with-syntax ([implicit-system-event (format-id #'system-name "~a/e" (syntax-e #'system-name))])
        #'(begin
            (define-event implicit-system-event)
-           ;;(define)
-           (let*
-               ([input-events (events evt-name ...)]
-                [output-events (events out-evt ...)]
-                [system-state (~? initial-state (λ (x) #t))]
-                ;              [system-state-b (syntax-parameterize
-                ;                                  ([state (make-rename-transformer #'system-state)])
-                ;                                (~? pre-body (λ (x) #t)))]
-                ;              [is-enabled (syntax-parameterize
-                ;                              ([state (make-rename-transformer #'system-state-b)])
-                ;                            (~? enabled-expr (λ (x) #t)))]
-                ;              [entities (query archetype)]
-                ;              [zero (syntax-parameterize
-                ;                        ([state (make-rename-transformer #'system-state-b)])
-                ;                      (~? zero-expr (λ (x) #t)))]
-                ;              [map-body (syntax-parameterize
-                ;                            ([state (make-rename-transformer #'system-state)])
-                ;                          (~? 'map-fn (λ (x) #t)))]
-                ;              [reduce-body (syntax-parameterize
-                ;                               ([state (make-rename-transformer #'system-state)])
-                ;                             (~? reduce-body-expr (λ (x y) #t)))]
-                ;              [post (syntax-parameterize
-                ;                        ([state (make-rename-transformer #'system-state)])
-                ;                      (~? post-body-expr (λ (x) #t)))]
-                )
-             (begin
-               (displayln 'x)
-               #;'(map map-body entities)
-               #;(foldl reduce-body zero entities)
-               1
-               #;(add-to-graph 'system-name input-events output-events)))))]))
+           (define system-name
+             (create-system
+              'system-name
+              (let*
+                  ([input-events (events evt-name ...)]
+                   [state-0 (~? initial-state #f)]
+                   [pre-val-0
+                    (syntax-parameterize
+                        ([(~? state-name state-name-default) (make-rename-transformer #'state-0)])
+                      (~? (begin pre-body ...) (void)))]
+;                   [state-1 pre-val-0]
+;                   [enabled
+;                    (syntax-parameterize
+;                        ([state-name (make-rename-transformer #'state-1)])
+;                      (begin enabled?-body ...))]
+;                   [entities
+;                    (if enabled (~? query (list)) (list))]
+;                   [map-val (if enabled
+;                                (syntax-parameterize
+;                                    ([state-name (make-rename-transformer #'state-1)]
+;                                     [pre-name (make-rename-transformer #'pre-val-0)]
+;                                     [(~? entity-name (generate-temporary)) (make-rename-transformer #'pre-val-0)])
+;                                  (begin map-body ...))
+;                                (list))]
+;                   [reduce-val (syntax-parameterize
+;                                   ([state-name (make-rename-transformer #'state-1)]
+;                                    [pre-name (make-rename-transformer #'pre-val-0)]
+;                                    [maps-name (make-rename-transformer #'map-val)])
+;                                 (begin reduce-body ...))]
+;                   [post (syntax-parameterize
+;                             ([state-name (make-rename-transformer #'state-1)]
+;                              [pre-name (make-rename-transformer #'pre-val-0)]
+;                              [reduce-name (make-rename-transformer #'reduce-val)])
+;                           (begin post-body ...))]
+;                   [output-events (syntax-parameterize
+;                                      ([state-name (make-rename-transformer #'state-1)]
+;                                       [pre-name (make-rename-transformer #'pre-val-0)]
+;                                       [reduce-name (make-rename-transformer #'reduce-val)])
+;                                    (events out-evt ...))]
+                   )
+                (begin
+                  (displayln 'x)
+                  #;'(map map-body entities)
+                  #;(foldl reduce-body zero entities)
+                  1
+                  #;(add-to-graph 'system-name input-events output-events)))))))]))
 
 
 ;; entities
@@ -192,6 +208,9 @@
   (entity id cmpnts archetype))
 
 ;; helper methods
+
+(define-for-syntax (generate-temporary)
+  (gensym))
 
 (define (query archetype)
   ;; TODO: implement
@@ -217,6 +236,10 @@
 ;; syntax parameters
 
 (define-syntax-parameter state
+  (λ (stx)
+    (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
+
+(define-syntax-parameter state-name-default
   (λ (stx)
     (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
 
