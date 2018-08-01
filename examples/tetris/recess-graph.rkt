@@ -1,10 +1,10 @@
 #lang racket/base
-(require (for-syntax syntax/parse racket/base)
-         graph racket/stxparam)
+(require (for-syntax syntax/parse racket/base racket/syntax)
+         graph racket/stxparam racket/syntax)
 
 (provide
  (all-defined-out)
- (all-from-out racket/base graph))
+ (all-from-out racket/base racket/syntax graph))
 
 (define recess-graph (unweighted-graph/directed '()))
 
@@ -139,46 +139,49 @@
 (define-syntax (define-system stx)
   (syntax-parse stx
     [(_ system-name:id
-         (~seq #:in [evt-name:id in-evt:expr]) ...
-         (~optional (~seq #:state [state-name:id initial-state:expr]))
-         (~optional (~seq #:pre pre-name:id pre-body:expr ...))
-         (~optional (~seq #:enabled? enabled?-body:expr ...))
-         (~optional (~seq #:query entity-name:id query:expr #;query:static-query))
-         (~optional (~seq #:map maps-name:id map-body:expr ...))
-         (~optional (~seq #:reduce reduce-name:id reduce-body:expr ...))
-         (~optional (~seq #:post post-body:expr ...))
-         (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
-     #'(define system-name
-         (let*
-             ([input-events (events evt-name ...)]
-              [output-events (events out-evt ...)]
-              [system-state (~? initial-state (λ (x) #t))]
-;              [system-state-b (syntax-parameterize
-;                                  ([state (make-rename-transformer #'system-state)])
-;                                (~? pre-body (λ (x) #t)))]
-;              [is-enabled (syntax-parameterize
-;                              ([state (make-rename-transformer #'system-state-b)])
-;                            (~? enabled-expr (λ (x) #t)))]
-;              [entities (query archetype)]
-;              [zero (syntax-parameterize
-;                        ([state (make-rename-transformer #'system-state-b)])
-;                      (~? zero-expr (λ (x) #t)))]
-;              [map-body (syntax-parameterize
-;                            ([state (make-rename-transformer #'system-state)])
-;                          (~? 'map-fn (λ (x) #t)))]
-;              [reduce-body (syntax-parameterize
-;                               ([state (make-rename-transformer #'system-state)])
-;                             (~? reduce-body-expr (λ (x y) #t)))]
-;              [post (syntax-parameterize
-;                        ([state (make-rename-transformer #'system-state)])
-;                      (~? post-body-expr (λ (x) #t)))]
-              )
-           (begin
-             #;(displayln system-state-b)
-             #;'(map map-body entities)
-             #;(foldl reduce-body zero entities)
-             #;(post 1)
-             (add-to-graph 'system-name input-events output-events))))]))
+        (~seq #:in [evt-name:id in-evt:expr]) ...
+        (~optional (~seq #:state [state-name:id initial-state:expr]))
+        (~optional (~seq #:pre pre-name:id pre-body:expr ...))
+        (~optional (~seq #:enabled? enabled?-body:expr ...))
+        (~optional (~seq #:query entity-name:id query:expr #;query:static-query))
+        (~optional (~seq #:map maps-name:id map-body:expr ...))
+        (~optional (~seq #:reduce reduce-name:id reduce-body:expr ...))
+        (~optional (~seq #:post post-body:expr ...))
+        (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
+     (with-syntax ([implicit-system-event (format-id #'system-name "~a/e" (syntax-e #'system-name))])
+       #'(begin
+           (define-event implicit-system-event)
+           ;;(define)
+           (let*
+               ([input-events (events evt-name ...)]
+                [output-events (events out-evt ...)]
+                [system-state (~? initial-state (λ (x) #t))]
+                ;              [system-state-b (syntax-parameterize
+                ;                                  ([state (make-rename-transformer #'system-state)])
+                ;                                (~? pre-body (λ (x) #t)))]
+                ;              [is-enabled (syntax-parameterize
+                ;                              ([state (make-rename-transformer #'system-state-b)])
+                ;                            (~? enabled-expr (λ (x) #t)))]
+                ;              [entities (query archetype)]
+                ;              [zero (syntax-parameterize
+                ;                        ([state (make-rename-transformer #'system-state-b)])
+                ;                      (~? zero-expr (λ (x) #t)))]
+                ;              [map-body (syntax-parameterize
+                ;                            ([state (make-rename-transformer #'system-state)])
+                ;                          (~? 'map-fn (λ (x) #t)))]
+                ;              [reduce-body (syntax-parameterize
+                ;                               ([state (make-rename-transformer #'system-state)])
+                ;                             (~? reduce-body-expr (λ (x y) #t)))]
+                ;              [post (syntax-parameterize
+                ;                        ([state (make-rename-transformer #'system-state)])
+                ;                      (~? post-body-expr (λ (x) #t)))]
+                )
+             (begin
+               (displayln 'x)
+               #;'(map map-body entities)
+               #;(foldl reduce-body zero entities)
+               1
+               #;(add-to-graph 'system-name input-events output-events)))))]))
 
 
 ;; entities
@@ -209,7 +212,7 @@
          (add-vertex! recess-graph (event-name ev))
          (add-directed-edge! recess-graph system-name (event-name ev))))
      output-events)
-    (display (graphviz recess-graph))))
+    #;(display (graphviz recess-graph))))
 
 ;; syntax parameters
 
