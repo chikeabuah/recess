@@ -155,10 +155,7 @@
         (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
      (with-syntax ([implicit-system-event (format-id #'system-name "~a/e" (syntax-e #'system-name))])
        #'(begin
-           ;           (cond
-           ;             [(~? state-name #f) (define-syntax-parameter state-name #f)]
-           ;             [(~? pre-name #f) (define-syntax-parameter pre-name #f)]
-           ;             [(~? entity-name #f) (define-syntax-parameter entity-name #f)])
+           #;(define-syntax-parameter (~? state-name default-state-name) #f)
            (define-event implicit-system-event)
            (define system-name (create-system 'system-name))
            (set-system-body!
@@ -166,10 +163,11 @@
             (let*
                 ([input-events (events evt-name ...)]
                  [state-0 (~? initial-state #f)]
-                 ;                   [pre-val-0
-                 ;                    (syntax-parameterize
-                 ;                        ([(~? state-name state-name-default) (make-rename-transformer #'state-0)])
-                 ;                      (~? (begin pre-body ...) (void)))]
+                 [(~? state-name default-state-name) state-0]
+                 #;[pre-val-0
+                  (syntax-parameterize
+                      ([(~? state-name default-state-name) (make-rename-transformer #'state-0)])
+                    (~? (begin pre-body ...) (void)))]
                  ;                   [state-1 pre-val-0]
                  ;                   [enabled
                  ;                    (syntax-parameterize
@@ -207,7 +205,7 @@
                 #;'(map map-body entities)
                 #;(foldl reduce-body zero entities)
                 (set-system-in! system-name input-events)
-                #;(displayln input-events)
+                (displayln (~? state-name default-state-name))
                 #;(displayln output-events)
                 #;(add-to-graph 'system-name input-events output-events)
                 )))
@@ -273,7 +271,7 @@
            (λ (stx)
              (raise-syntax-error (syntax-e stx) "can only be used inside define-system"))) ...)]))
 
-(define-system-syntax-parameter state state-name-default)
+#;(define-system-syntax-parameter state-name-default)
 
 ;; helper macros
 

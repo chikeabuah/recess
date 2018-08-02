@@ -50,7 +50,7 @@
   #:in [collision-structure/e 1]
   #:in [move-down/e 1]
   #:in [touched-bottom?/e 1]
-  #:state [state 5]
+  #:state [stated 5]
   #:pre pre (+ state 3)
   #:enabled? #t
   #:map mapfn (λ (e) (tetro-to-blocks e))
