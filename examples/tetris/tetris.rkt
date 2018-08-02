@@ -181,3 +181,5 @@
           (set! e.Position.x (sub1 e.Position.x))))
 
 ; XXX Worlds
+
+(define-world tetris start!)

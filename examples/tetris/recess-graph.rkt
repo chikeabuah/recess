@@ -206,15 +206,29 @@
               (begin
                 #;'(map map-body entities)
                 #;(foldl reduce-body zero entities)
-                1
                 (set-system-in! system-name input-events)
-                (displayln input-events)
+                #;(displayln input-events)
                 #;(displayln output-events)
                 #;(add-to-graph 'system-name input-events output-events)
                 )))
            (add-to-graph system-name (system-in system-name) (list))
            system-name))]))
 
+
+;; worlds
+
+(define-syntax (define-world stx)
+  (syntax-parse stx
+    [(_ world-name:id action!:id)
+     #'(action!)]))
+
+;; create a topological ordering of the recess
+;; graph and execute the nodes in that order
+(define (start!)
+  (let ([world-tsorted (tsort recess-graph)])
+    (for-each (lambda (arg)
+                (displayln arg))
+              world-tsorted)))
 
 ;; entities
 
@@ -247,7 +261,7 @@
          (add-vertex! recess-graph (event-name ev))
          (add-directed-edge! recess-graph system-name (event-name ev))))
      output-events)
-    (display (graphviz recess-graph))))
+    #;(display (graphviz recess-graph))))
 
 ;; syntax parameters
 
