@@ -48,8 +48,8 @@
 (define-system tetros-to-blocks   
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e 1]
-  #:in [move-down 1]
-  #:in [touched-bottom? 1]
+  #:in [move-down/e 1]
+  #:in [touched-bottom?/e 1]
   #:state [state 5]
   #:pre pre (+ state 3)
   #:enabled? #t
@@ -59,8 +59,8 @@
 
 (define-system compute-collision-structure    
   ;;#:archetype Block
-  #:in [tetros-to-blocks 1]
-  #:in [touched-bottom? 1]
+  #:in [tetros-to-blocks/e 1]
+  #:in [touched-bottom?/e 1]
   #:map mapfn (λ (e) 
           (vector-set! 
            (vector-ref collision-structure/e 'e.Position.y) 
@@ -120,7 +120,7 @@
 
 (define-system clear-full-rows
   #:in [collision-structure/e #t]
-  #:in [touched-bottom? #t]
+  #:in [touched-bottom?/e #t]
   #:map mapfn (λ (e) 
           (when #t (set! e (make-vector COLS #f)))))
 
@@ -132,7 +132,7 @@
 (define-system increment-score
   ;;#:archetype Score
   #:in [collision-structure/e #t]
-  #:in [increment-timer #t]
+  #:in [increment-timer/e #t]
   #:map mapfn (λ (e) (set! e.Score.val (add1 e.Score.val))))
 
 (define-system hard-drop    
@@ -150,33 +150,33 @@
 (define-system rotate-ccw    
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e #t]
-  #:in [can-rotate-ccw? #t]
+  #:in [can-rotate-ccw?/e #t]
   #:map mapfn (λ (e) (rotate90 (rotate90 (rotate90 e)))))
 
 (define-system rotate-cw    
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e #t]
-  #:in [can-rotate-cw? #t]
+  #:in [can-rotate-cw?/e #t]
   #:map mapfn (λ (e) (rotate90 e)))
 
 (define-system move-down    
   ;;#:archetype ActiveTetromino
   #:in [clock-tick/e 'change]
-  #:in [can-move-down? #t]
+  #:in [can-move-down?/e #t]
   #:map mapfn (λ (e)
           (set! e.Position.y (sub1 e.Position.y))))
 
 (define-system move-right    
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e #t]
-  #:in [can-move-right? #t]
+  #:in [can-move-right?/e #t]
   #:map mapfn (λ (e)
           (set! e.Position.x (add1 e.Position.x))))
 
 (define-system move-left    
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e #t]
-  #:in [can-move-left? #t]
+  #:in [can-move-left?/e #t]
   #:map mapfn (λ (e)
           (set! e.Position.x (sub1 e.Position.x))))
 
