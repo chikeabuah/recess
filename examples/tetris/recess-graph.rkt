@@ -36,7 +36,9 @@
 
 ;; event ideas:
 ;; requiring a system as an implicit event = requiring all of that system's output events
-;; in addition to an implicit event matching the system's name 
+;; in addition to an implicit event matching the system's name
+
+(define et (make-hasheq))
 
 (struct event (name zero plus))
 (struct evnt:source event (input))
@@ -49,8 +51,9 @@
 (define-syntax (define-event stx)
   (syntax-parse stx
     [(_ name (~optional zero) (~optional plus))
-     (begin
-       #'(define name (create-event 'name (~? 'zero #f) (~? 'plus #f))))]))
+     #'(begin
+         (define name (create-event 'name (~? 'zero #f) (~? 'plus #f)))
+         (hash-set! et name #f))]))
 
 ;;; define-system syntax and identifier bindings
 
@@ -151,6 +154,10 @@
         (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
      (with-syntax ([implicit-system-event (format-id #'system-name "~a/e" (syntax-e #'system-name))])
        #'(begin
+           (cond
+             [(~? state-name #f) (define-syntax-parameter state-name #f)]
+             [(~? pre-name #f) (define-syntax-parameter pre-name #f)]
+             [(~? entity-name #f) (define-syntax-parameter entity-name #f)])
            (define-event implicit-system-event)
            (define system-name
              (create-system
@@ -162,35 +169,38 @@
                     (syntax-parameterize
                         ([(~? state-name state-name-default) (make-rename-transformer #'state-0)])
                       (~? (begin pre-body ...) (void)))]
-;                   [state-1 pre-val-0]
-;                   [enabled
-;                    (syntax-parameterize
-;                        ([state-name (make-rename-transformer #'state-1)])
-;                      (begin enabled?-body ...))]
-;                   [entities
-;                    (if enabled (~? query (list)) (list))]
-;                   [map-val (if enabled
-;                                (syntax-parameterize
-;                                    ([state-name (make-rename-transformer #'state-1)]
-;                                     [pre-name (make-rename-transformer #'pre-val-0)]
-;                                     [(~? entity-name (generate-temporary)) (make-rename-transformer #'pre-val-0)])
-;                                  (begin map-body ...))
-;                                (list))]
-;                   [reduce-val (syntax-parameterize
-;                                   ([state-name (make-rename-transformer #'state-1)]
-;                                    [pre-name (make-rename-transformer #'pre-val-0)]
-;                                    [maps-name (make-rename-transformer #'map-val)])
-;                                 (begin reduce-body ...))]
-;                   [post (syntax-parameterize
-;                             ([state-name (make-rename-transformer #'state-1)]
-;                              [pre-name (make-rename-transformer #'pre-val-0)]
-;                              [reduce-name (make-rename-transformer #'reduce-val)])
-;                           (begin post-body ...))]
-;                   [output-events (syntax-parameterize
-;                                      ([state-name (make-rename-transformer #'state-1)]
-;                                       [pre-name (make-rename-transformer #'pre-val-0)]
-;                                       [reduce-name (make-rename-transformer #'reduce-val)])
-;                                    (events out-evt ...))]
+                   [state-1 pre-val-0]
+                   [enabled
+                    (syntax-parameterize
+                        ([(~? state-name state-name-default) (make-rename-transformer #'state-1)])
+                      (~? (begin enabled?-body ...) (void)))]
+                   [entities
+                    (if enabled (~? query (list)) (list))]
+                   [map-val
+                    (if
+                     enabled
+                     (syntax-parameterize
+                         ([(~? state-name state-name-default) (make-rename-transformer #'state-1)]
+                          [(~? pre-name pre-name-default) (make-rename-transformer #'pre-val-0)]
+                          [(~? entity-name (generate-temporary))
+                           (make-rename-transformer #'pre-val-0)])
+                       (~? (begin map-body ...) (void)))
+                     (list))]
+                   [reduce-val (syntax-parameterize
+                                   ([state-name (make-rename-transformer #'state-1)]
+                                    [pre-name (make-rename-transformer #'pre-val-0)]
+                                    [maps-name (make-rename-transformer #'map-val)])
+                                 (begin reduce-body ...))]
+                   [post (syntax-parameterize
+                             ([state-name (make-rename-transformer #'state-1)]
+                              [pre-name (make-rename-transformer #'pre-val-0)]
+                              [reduce-name (make-rename-transformer #'reduce-val)])
+                           (begin post-body ...))]
+                   [output-events (syntax-parameterize
+                                      ([state-name (make-rename-transformer #'state-1)]
+                                       [pre-name (make-rename-transformer #'pre-val-0)]
+                                       [reduce-name (make-rename-transformer #'reduce-val)])
+                                    (events out-evt ...))]
                    )
                 (begin
                   (displayln 'x)
@@ -235,13 +245,15 @@
 
 ;; syntax parameters
 
-(define-syntax-parameter state
-  (λ (stx)
-    (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
+(define-syntax (define-system-syntax-parameter stx)
+  (syntax-parse stx
+    [(_ ident:id ...)
+     #'(begin
+         (define-syntax-parameter ident
+           (λ (stx)
+             (raise-syntax-error (syntax-e stx) "can only be used inside define-system"))) ...)]))
 
-(define-syntax-parameter state-name-default
-  (λ (stx)
-    (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
+(define-system-syntax-parameter state state-name-default)
 
 ;; helper macros
 
