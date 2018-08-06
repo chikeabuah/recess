@@ -155,6 +155,20 @@
         (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
      (with-syntax ([implicit-system-event (format-id #'system-name "~a/e" (syntax-e #'system-name))])
        #'(begin
+
+           #;(define pre-body-fun
+             (λ (state-name evts)
+               (match-define (list evt-name ...) evts)
+               pre-body ...))
+           #;(define post-body-fun
+             (λ (state-name pre-name reduce-name)
+               post-body ...))
+
+           #;....
+           #;(define pre-val (pre-body-fun state-0 (list actual-evt-value-1 ...)))
+           #;....
+
+           
            #;(define-syntax-parameter (~? state-name default-state-name) #f)
            (define-event implicit-system-event)
            (define system-name (create-system 'system-name))
