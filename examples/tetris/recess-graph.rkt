@@ -1,6 +1,6 @@
 #lang racket/base
 (require (for-syntax syntax/parse racket/base racket/syntax)
-         graph racket/stxparam racket/syntax)
+         graph racket/syntax)
 
 (provide
  (all-defined-out)
@@ -155,21 +155,27 @@
         (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
      (with-syntax ([implicit-system-event (format-id #'system-name "~a/e" (syntax-e #'system-name))])
        #'(begin
-
-           #;(define pre-body-fun
-             (λ (state-name evts)
-               (match-define (list evt-name ...) evts)
-               pre-body ...))
-           #;(define post-body-fun
-             (λ (state-name pre-name reduce-name)
-               post-body ...))
-
-           #;....
-           #;(define pre-val (pre-body-fun state-0 (list actual-evt-value-1 ...)))
-           #;....
-
            
-           #;(define-syntax-parameter (~? state-name default-state-name) #f)
+           (define pre-body-fun
+             (λ (state-name evts)
+               (match-define (list evt-name ...) (hash->list evts))
+               pre-body ...))
+           (define enabled-body-fun
+             (λ (state-name pre-name)
+               (~? (begin post-body ...) (void))))
+           (define map-body-fun
+             (λ (state-name pre-name)
+               (~? (begin map-body ...) (void))))
+           (define reduce-body-fun
+             (λ (state-name pre-name maps-name)
+               (~? (begin reduce-body ...) (void))))
+           (define post-body-fun
+             (λ (state-name pre-name reduce-name)
+               (~? (begin post-body ...) (void))))
+           (define output-events-fun
+             (λ (state-name pre-name reduce-name)
+               (~? (events out-evt ...) (void))))
+           
            (define-event implicit-system-event)
            (define system-name (create-system 'system-name))
            (set-system-body!
@@ -178,42 +184,21 @@
                 ([input-events (events evt-name ...)]
                  [state-0 (~? initial-state #f)]
                  [(~? state-name default-state-name) state-0]
-                 #;[pre-val-0
-                  (syntax-parameterize
-                      ([(~? state-name default-state-name) (make-rename-transformer #'state-0)])
-                    (~? (begin pre-body ...) (void)))]
-                 ;                   [state-1 pre-val-0]
-                 ;                   [enabled
-                 ;                    (syntax-parameterize
-                 ;                        ([(~? state-name state-name-default) (make-rename-transformer #'state-1)])
-                 ;                      (~? (begin enabled?-body ...) (void)))]
-                 ;                   [entities
-                 ;                    (if enabled (~? query (list)) (list))]
-                 ;                   [map-val
-                 ;                    (if
-                 ;                     enabled
-                 ;                     (syntax-parameterize
-                 ;                         ([(~? state-name state-name-default) (make-rename-transformer #'state-1)]
-                 ;                          [(~? pre-name pre-name-default) (make-rename-transformer #'pre-val-0)]
-                 ;                          [(~? entity-name (generate-temporary))
-                 ;                           (make-rename-transformer #'pre-val-0)])
-                 ;                       (~? (begin map-body ...) (void)))
-                 ;                     (list))]
-                 ;                   [reduce-val (syntax-parameterize
-                 ;                                   ([state-name (make-rename-transformer #'state-1)]
-                 ;                                    [pre-name (make-rename-transformer #'pre-val-0)]
-                 ;                                    [maps-name (make-rename-transformer #'map-val)])
-                 ;                                 (begin reduce-body ...))]
-                 ;                   [post (syntax-parameterize
-                 ;                             ([state-name (make-rename-transformer #'state-1)]
-                 ;                              [pre-name (make-rename-transformer #'pre-val-0)]
-                 ;                              [reduce-name (make-rename-transformer #'reduce-val)])
-                 ;                           (begin post-body ...))]
-                 ;                   [output-events (syntax-parameterize
-                 ;                                      ([state-name (make-rename-transformer #'state-1)]
-                 ;                                       [pre-name (make-rename-transformer #'pre-val-0)]
-                 ;                                       [reduce-name (make-rename-transformer #'reduce-val)])
-                 ;                                    (events out-evt ...))]
+                 [pre-val-0 (pre-body-fun state-name evts)]
+                 [pre-name pre-val-0]
+                 [enabled (enabled-body-fun state-name pre-name)]
+                 [entities
+                  (if enabled (~? query (list)) (list))]
+                 [map-val
+                  (if
+                   enabled
+                   (map-body-fun state-name pre-name)
+                   (list))]
+                 [maps-name maps-val]
+                 [reduce-val (reduce-body-fun state-name pre-name maps-name)]
+                 [reduce-name reduce val]
+                 [post (post-body-fun state-name pre-name reduce-name)]
+                 [output-events (output-events-fun state-name pre-name reduce-name)]
                  )
               (begin
                 #;'(map map-body entities)
@@ -275,17 +260,6 @@
      output-events)
     #;(display (graphviz recess-graph))))
 
-;; syntax parameters
-
-(define-syntax (define-system-syntax-parameter stx)
-  (syntax-parse stx
-    [(_ ident:id ...)
-     #'(begin
-         (define-syntax-parameter ident
-           (λ (stx)
-             (raise-syntax-error (syntax-e stx) "can only be used inside define-system"))) ...)]))
-
-#;(define-system-syntax-parameter state-name-default)
 
 ;; helper macros
 
