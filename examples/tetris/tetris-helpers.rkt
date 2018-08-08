@@ -13,13 +13,31 @@
 (struct shape (x))
 
 (define (random-color)
-  "red"
-  )
+  "red")
 
 (define (random-shape)
-  "O"
-  )
+  "O")
 
 (define (unit-block)
-  0
-  )
+  0)
+
+(define (tetro-to-blocks e)
+  e)
+
+(define (valid-ccw? tetro cs)
+  #t)
+
+(define (valid-cw? tetro cs)
+  #t)
+
+(define (vacant-down? tetro cs)
+  #t)
+
+(define (vacant-right? tetro cs)
+  #t)
+
+(define (vacant-left? tetro cs)
+  #t)
+
+(define (rotate90 tetro)
+  #t)

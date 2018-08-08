@@ -51,8 +51,8 @@
   #:in [move-down/e 1]
   #:in [touched-bottom?/e 1]
   #:state [stated 5]
-  #:pre pre (+ state 3)
-  #:enabled? #t
+  #:pre pre (+ stated 3)
+  #:enabled? (< pre 1)
   #:map mapfn (λ (e) (tetro-to-blocks e))
   #:reduce reduce (λ (x y) #f) (λ (x y) #t)
   #:post (λ (x) #t)) 
