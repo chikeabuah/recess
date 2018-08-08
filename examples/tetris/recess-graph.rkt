@@ -153,63 +153,61 @@
         (~optional (~seq #:reduce reduce-name:id reduce-body:expr ...))
         (~optional (~seq #:post post-body:expr ...))
         (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
-     (with-syntax ([implicit-system-event (format-id #'system-name "~a/e" (syntax-e #'system-name))])
-       #'(begin
+     #'(begin
+         (define pre-body-fun
+           (λ (state-name evts)
+             (match-define (list evt-name ...) (hash->list evts))
+             pre-body ...))
+         (define enabled-body-fun
+           (λ (state-name pre-name)
+             (~? (begin post-body ...) (void))))
+         (define map-body-fun
+           (λ (state-name pre-name)
+             (~? (begin map-body ...) (void))))
+         (define reduce-body-fun
+           (λ (state-name pre-name maps-name)
+             (~? (begin reduce-body ...) (void))))
+         (define post-body-fun
+           (λ (state-name pre-name reduce-name)
+             (~? (begin post-body ...) (void))))
+         (define output-events-fun
+           (λ (state-name pre-name reduce-name)
+             (~? (events out-evt ...) (void))))
            
-           (define pre-body-fun
-             (λ (state-name evts)
-               (match-define (list evt-name ...) (hash->list evts))
-               pre-body ...))
-           (define enabled-body-fun
-             (λ (state-name pre-name)
-               (~? (begin post-body ...) (void))))
-           (define map-body-fun
-             (λ (state-name pre-name)
-               (~? (begin map-body ...) (void))))
-           (define reduce-body-fun
-             (λ (state-name pre-name maps-name)
-               (~? (begin reduce-body ...) (void))))
-           (define post-body-fun
-             (λ (state-name pre-name reduce-name)
-               (~? (begin post-body ...) (void))))
-           (define output-events-fun
-             (λ (state-name pre-name reduce-name)
-               (~? (events out-evt ...) (void))))
-           
-           (define-event implicit-system-event)
-           (define system-name (create-system 'system-name))
-           (set-system-body!
-            system-name
-            (let*
-                ([input-events (events evt-name ...)]
-                 [state-0 (~? initial-state #f)]
-                 [(~? state-name default-state-name) state-0]
-                 [pre-val-0 (pre-body-fun state-name evts)]
-                 [pre-name pre-val-0]
-                 [enabled (enabled-body-fun state-name pre-name)]
-                 [entities
-                  (if enabled (~? query (list)) (list))]
-                 [map-val
-                  (if
-                   enabled
-                   (map-body-fun state-name pre-name)
-                   (list))]
-                 [maps-name maps-val]
-                 [reduce-val (reduce-body-fun state-name pre-name maps-name)]
-                 [reduce-name reduce val]
-                 [post (post-body-fun state-name pre-name reduce-name)]
-                 [output-events (output-events-fun state-name pre-name reduce-name)]
-                 )
-              (begin
-                #;'(map map-body entities)
-                #;(foldl reduce-body zero entities)
-                (set-system-in! system-name input-events)
-                (displayln (~? state-name default-state-name))
-                #;(displayln output-events)
-                #;(add-to-graph 'system-name input-events output-events)
-                )))
-           (add-to-graph system-name (system-in system-name) (list))
-           system-name))]))
+         (define-event implicit-system-event)
+         (define system-name (create-system 'system-name))
+         (set-system-body!
+          system-name
+          (let*
+              ([input-events (events evt-name ...)]
+               [state-0 (~? initial-state #f)]
+               [(~? state-name default-state-name) state-0]
+               [pre-val-0 (pre-body-fun state-name evts)]
+               [pre-name pre-val-0]
+               [enabled (enabled-body-fun state-name pre-name)]
+               [entities
+                (if enabled (~? query (list)) (list))]
+               [map-val
+                (if
+                 enabled
+                 (map-body-fun state-name pre-name)
+                 (list))]
+               [maps-name maps-val]
+               [reduce-val (reduce-body-fun state-name pre-name maps-name)]
+               [reduce-name reduce-val]
+               [post (post-body-fun state-name pre-name reduce-name)]
+               [output-events (output-events-fun state-name pre-name reduce-name)]
+               )
+            (begin
+              #;'(map map-body entities)
+              #;(foldl reduce-body zero entities)
+              (set-system-in! system-name input-events)
+              (displayln (~? state-name default-state-name))
+              #;(displayln output-events)
+              #;(add-to-graph 'system-name input-events output-events)
+              )))
+         (add-to-graph system-name (system-in system-name) (list))
+         system-name)]))
 
 
 ;; worlds
