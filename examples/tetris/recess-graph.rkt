@@ -1,10 +1,10 @@
 #lang racket/base
-(require (for-syntax syntax/parse racket/base)
-         graph racket/stxparam)
+(require (for-syntax syntax/parse racket/base racket/syntax racket/match)
+         graph racket/syntax racket/match racket/generic)
 
 (provide
  (all-defined-out)
- (all-from-out racket/base graph))
+ (all-from-out racket/base racket/syntax racket/match graph))
 
 (define recess-graph (unweighted-graph/directed '()))
 
@@ -15,7 +15,7 @@
 (struct component (id type))
 
 (define (create-component id [type (λ (x) #t)])  
-  (event id type))
+  (component id type))
 
 (define-syntax (define-component stx)
   (syntax-parse stx
@@ -36,81 +36,115 @@
 
 ;; event ideas:
 ;; requiring a system as an implicit event = requiring all of that system's output events
-;; in addition to an implicit event matching the system's name 
+;; in addition to an implicit event matching the system's name
 
-(struct event (id type))
+(define evts (make-hasheq))
 
-(define (create-event id [type (λ (x) #t)])  
-  (event id type))
+(define-generics event-generic)
+
+(struct event (name zero plus) #:methods gen:event-generic [])
+(struct event:source event (input))
+(struct event:sink event (output))
+(struct event:transform event (f))
+
+(define (create-event id [zero (λ (x) #t)] [plus (λ (x) #t)])  
+  (event id zero plus))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
-    [(_ name (~optional type))
-     (begin
-       #;#''(name (~? type #f))
-       #'(define name (create-event 'name (~? 'type #f))))]))
+    [(_ name (~optional zero) (~optional plus))
+     #'(begin
+         ;; check first
+         (define name (create-event 'name (~? 'zero #f) (~? 'plus #f)))
+         (hash-set! evts name #f))]))
 
 ;;; define-system syntax and identifier bindings
 
 ;;; let's list these in the order they should be bound/evaluated
 ;;; top->bottom
 
-#;(define-system system-name:id
-    ;; a specification of the 'type' of entities that are needed
-    #:archetype archetype:id
-    ;; a static specification of which events are inputs
-    #:on list-of-input-events:expr
-    ;; a static specification of which events may be output
-    #:out list-of-output-events:expr
-    ;; initial state of the system
-    #:init initial-state:expr
-    ;; Runs before the iteration to potentially update the state
-    ;; and gather some data for this iteration
-    ;; `system-state` is bound to the system's current state (initial-state) in pre-body
-    ;; `in-events` is bound to the system's list-of-input-events in pre-body
-    ;; returns a `system-state` which has been altered from its initial-state
-    ;; based on the 'in-events` to (system-state x B)
-    #:pre pre-body:expr
-    ;; decides if the query should be run (post will run anyway)
-    ;; `system-state` is bound to the system's current state (system-state x B) in pred-expr
-    ;; returns a boolean
-    #:enabled pred-expr:expr
-    ;; `system-state` is bound to the system's current state (system-state x B) in zero-expr
-    ;; returns the unit of the reduction for the iteration of type A
-    #:zero zero-expr:expr
-    ;; processes a single entity
-    ;; `system-state` is bound to the system's current state (system-state x B) in map-body  
-    ;; `e` is bound to the entity from the query for this iteration in map-body
-    ;; processes a single entity and returns a value of type A -- the type of the reduction
-    #:map map-body:expr
-    ;; combines the results of many entities (seq A)
-    ;; `system-state` is bound to the system's current state (system-state x B) in reduce-body
-    ;; `e` is bound to the entity in reduce-body
-    ;; returns a value of type A 
-    #:reduce reduce-body:expr
-    ;; generates the final state of the system for the iteration and then produces output
-    ;; `system-state` is bound to the system's current state (system-state x B x A) in post-body
-    ;; returns a list-of-output-events and (system-state x C)
-    #:post post-body:expr)
+;; binds name as a system object
+;; binds name as an event object
+#;(define-system name:id
+    ;; evt is evaluated once upon recess initialization [perhaps this
+    ;; should be a special form of "event expression?" same with below.]
+    (~seq #:in [evt-name:id evt:expr]) ...
+    ;; initial-state is evaluated once upon recess initialization and
+    ;; becomes state-0
+    ;; default state-name is (generate-temporary)
+    ;; default initial-state is #f
+    (~optional (~seq #:state [state-name:id initial-state:expr]))
+    ;; default pre-name is (generate-temporary)
+    ;; state-name is bound inside pre-body to state-0
+    ;; evt-name ... is bound to evt value
+    ;; may modify state (changed version is state-1)
+    ;; returns pre-val-0
+    ;; default is (void)
+    (~optional (~seq #:pre pre-name:id pre-body:expr ...))
+    ;; state-name is bound inside enabled?-body to state-1
+    ;; pre-name is bound to pre-val-0
+    ;; default is #t
+    ;; if #f, then query is not run, map is not run and
+    ;; reduce is run with empty sequence.
+    (~optional (~seq #:enabled? enabled?-body:expr ...))
+    ;; query is a static-query
+    ;; static-query :=
+    ;;   [component-name:id component-binding:static-component]
+    ;;   ...
+    ;; static-component :=
+    ;;   component-binding:id (bound to a component)
+    ;;   archetype-binding:id (bound to an archetype)
+    ;; entity-name defaults to (generate-temporary)
+    (~optional (~seq #:query entity-name:id query:static-query))
+    ;; state-name is bound inside map-body to state-1
+    ;; pre-name is bound to pre-val-0
+    ;; entity-name is bound to the entity
+    ;; maps-name defaults to (generate-temporary)
+    ;; returns map-val for entity (type A)
+    (~optional (~seq #:map maps-name:id map-body:expr ...))
+    ;; state-name is bound inside reduce-body to state-1
+    ;; pre-name is bound to pre-val-0
+    ;; maps-name is bound to a sequence of the map-values (could be empty)
+    ;; returns reduce-val (type A)
+    ;; default is (void)
+    ;; reduce-name defaults to (generate-temporary)
+    (~optional (~seq #:reduce reduce-name:id reduce-body:expr ...))
+    ;; state-name is bound inside post-body to state-1
+    ;; pre-name is bound to pre-val-0
+    ;; reduce-name is bound to complete reduce result
+    ;; returns state-N which becomes the new state-0 next iteration
+    (~optional (~seq #:post post-body:expr ...))
+    ;; state-name is bound inside evt-val-body to state-N
+    ;; pre-name is bound to pre-val-0
+    ;; reduce-name is bound to complete reduce result
+    ;; evt should evaluate to an event (and is evaluated upon recess
+    ;; initialization)
+    ;; evt-val-body should evaluate to value of the evt type
+    (~seq #:out [evt:expr evt-val-body:expr ...]) ...)
 
 ;; system struct
-;; not sure yet if we will use
-#;(struct system (system-name archetype on out init pre enabled zero map-body reduce-body post))
 
-#;(define (create-system
-           system-name
-           [archetype (λ (x) #t)]
-           [on (λ (x) #t)]
-           [out (λ (x) #t)]
-           [init (λ (x) #t)]
-           [pre (λ (x) #t)]
-           [enabled (λ (x) #t)]
-           [zero (λ (x) #t)]
-           [map-body (λ (x) #t)]
-           [reduce-body (λ (x) #t)]
-           [post (λ (x) #t)])
-    (system system-name archetype on out init pre enabled zero map-body reduce-body post))
+(define-generics system-generic)
 
+(struct system
+  (name body in state pre enabled query map reduce post out)
+  #:methods gen:system-generic []
+  #:methods gen:event-generic []
+  #:mutable)
+
+(define (create-system
+         name
+         [body (λ (x) #t)]
+         [in (λ (x) #t)]
+         [state (λ (x) #t)]
+         [pre (λ (x) #t)]
+         [enabled (λ (x) #t)]
+         [query (λ (x) #t)]
+         [map (λ (x) #t)]
+         [reduce (λ (x) #t)]
+         [post (λ (x) #t)]
+         [out (λ (x) #t)])
+  (system name body in state pre enabled query map reduce post out))
 
 ;; register a system in the graph and have it print out the graph's
 ;; structure on each call
@@ -119,49 +153,83 @@
 (define-syntax (define-system stx)
   (syntax-parse stx
     [(_ system-name:id
-        (~alt
-         (~optional (~seq #:archetype archetype-name:id))
-         (~optional (~seq #:on new-inputs-expr:expr))
-         (~optional (~seq #:out new-outputs-expr:expr))
-         (~optional (~seq #:init init-expr:expr))
-         (~optional (~seq #:pre pre-body:expr))
-         (~optional (~seq #:enabled enabled-expr:expr))
-         (~optional (~seq #:zero zero-expr:expr))
-         (~optional (~seq #:map map-fn:expr))
-         (~optional (~seq #:reduce reduce-body-expr:expr))
-         (~optional (~seq #:post post-body-expr:expr))) ...)
-     #'(define system-name
-         (let*
-             ([archetype (~? archetype-name (λ (x) #t))]
-              [input-events (~? new-inputs-expr null)]
-              [output-events (~? new-outputs-expr null)]
-              [system-state (~? init-expr (λ (x) #t))]
-              [system-state-b (syntax-parameterize
-                                  ([state (make-rename-transformer #'system-state)])
-                                (~? pre-body (λ (x) #t)))]
-              [is-enabled (syntax-parameterize
-                              ([state (make-rename-transformer #'system-state-b)])
-                            (~? enabled-expr (λ (x) #t)))]
-              [entities (query archetype)]
-              [zero (syntax-parameterize
-                        ([state (make-rename-transformer #'system-state-b)])
-                      (~? zero-expr (λ (x) #t)))]
-              [map-body (syntax-parameterize
-                            ([state (make-rename-transformer #'system-state)])
-                          (~? 'map-fn (λ (x) #t)))]
-              [reduce-body (syntax-parameterize
-                               ([state (make-rename-transformer #'system-state)])
-                             (~? reduce-body-expr (λ (x y) #t)))]
-              [post (syntax-parameterize
-                        ([state (make-rename-transformer #'system-state)])
-                      (~? post-body-expr (λ (x) #t)))])
-           (begin
-             #;(displayln system-state-b)
-             '(map map-body entities)
-             (foldl reduce-body zero entities)
-             (post 1)
-             (add-to-graph 'system-name input-events output-events))))]))
+        (~seq #:in [evt-name:id in-evt:expr]) ...
+        (~optional (~seq #:state [given-state-name:id initial-state:expr]))
+        (~optional (~seq #:pre given-pre-name:id pre-body:expr ...))
+        (~optional (~seq #:enabled? enabled?-body:expr ...))
+        (~optional (~seq #:query entity-name:id query:expr #;query:static-query))
+        (~optional (~seq #:map given-maps-name:id map-body:expr ...))
+        (~optional (~seq #:reduce given-reduce-name:id reduce-body:expr ...))
+        (~optional (~seq #:post post-body:expr ...))
+        (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
+     #:with state-name #'(~? given-state-name default-state-name)
+     #:with pre-name #'(~? given-pre-name default-pre-name)
+     #:with maps-name #'(~? given-maps-name default-maps-name)
+     #:with reduce-name #'(~? given-reduce-name default-reduce-name)
+     #'(begin
+           
+         (define system-name (create-system 'system-name))
+         (set-system-body!
+          system-name
+          (let*
+              ([pre-body-fun (λ (state-name evts)
+                               #;(match-define (list evt-name ...) (hash->list evts))
+                               (~? (begin pre-body ...) (void)))]
+               [enabled-body-fun (λ (state-name pre-name)
+                                   (~? (begin post-body ...) (void)))]
+               [map-body-fun (λ (state-name pre-name)
+                               '(~? (begin map-body ...) (void)))]
+               [reduce-body-fun (λ (state-name pre-name maps-name)
+                                  (~? (begin reduce-body ...) (void)))]
+               [post-body-fun (λ (state-name pre-name reduce-name)
+                                (~? (begin post-body ...) (void)))]
+               [output-events-fun (λ (state-name pre-name reduce-name)
+                                    (~? (events out-evt ...) (void)))]
+               [input-events (events evt-name ...)]
+               [state-0 (~? initial-state #f)]
+               [state-name state-0]
+               [pre-val-0 (pre-body-fun state-name evts)]
+               [pre-name pre-val-0]
+               [enabled (enabled-body-fun state-name pre-name)]
+               [entities
+                (if enabled (~? query (list)) (list))]
+               [maps-val
+                (if
+                 enabled
+                 (map-body-fun state-name pre-name)
+                 (list))]
+               [maps-name maps-val]
+               [reduce-val (reduce-body-fun state-name pre-name maps-name)]
+               [reduce-name reduce-val]
+               [post (post-body-fun state-name pre-name reduce-name)]
+               [output-events (output-events-fun state-name pre-name reduce-name)]
+               )
+            (begin
+              #;'(map map-body entities)
+              #;(foldl reduce-body zero entities)
+              (set-system-in! system-name input-events)
+              (displayln state-name)
+              #;(displayln output-events)
+              #;(add-to-graph 'system-name input-events output-events)
+              )))
+         (add-to-graph system-name (system-in system-name) (list))
+         system-name)]))
 
+
+;; worlds
+
+(define-syntax (define-world stx)
+  (syntax-parse stx
+    [(_ world-name:id action!:id)
+     #'(action!)]))
+
+;; create a topological ordering of the recess
+;; graph and execute the nodes in that order
+(define (start!)
+  (let ([world-tsorted (tsort recess-graph)])
+    (for-each (lambda (arg)
+                (displayln arg))
+              world-tsorted)))
 
 ;; entities
 
@@ -171,6 +239,9 @@
   (entity id cmpnts archetype))
 
 ;; helper methods
+
+(define-for-syntax (generate-temporary)
+  (gensym))
 
 (define (query archetype)
   ;; TODO: implement
@@ -182,22 +253,17 @@
     (for-each
      (λ (ev)
        (begin
-         (add-vertex! recess-graph (event-id ev))
-         (add-directed-edge! recess-graph (event-id ev) system-name)))
+         (add-vertex! recess-graph (event-name ev))
+         (add-directed-edge! recess-graph (event-name ev) system-name)))
      input-events)
     (for-each
      (λ (ev)
        (begin
-         (add-vertex! recess-graph (event-id ev))
-         (add-directed-edge! recess-graph system-name (event-id ev))))
+         (add-vertex! recess-graph (event-name ev))
+         (add-directed-edge! recess-graph system-name (event-name ev))))
      output-events)
-    (display (graphviz recess-graph))))
+    #;(display (graphviz recess-graph))))
 
-;; syntax parameters
-
-(define-syntax-parameter state
-  (λ (stx)
-    (raise-syntax-error (syntax-e stx) "can only be used inside define-system")))
 
 ;; helper macros
 
