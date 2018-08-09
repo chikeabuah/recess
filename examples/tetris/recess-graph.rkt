@@ -167,31 +167,25 @@
      #:with maps-name #'(~? given-maps-name default-maps-name)
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
      #'(begin
-         (define pre-body-fun
-           (λ (state-name evts)
-             #;(match-define (list evt-name ...) (hash->list evts))
-             (~? (begin pre-body ...) (void))))
-         (define enabled-body-fun
-           (λ (state-name pre-name)
-             (~? (begin post-body ...) (void))))
-         (define map-body-fun
-           (λ (state-name pre-name)
-             '(~? (begin map-body ...) (void))))
-         (define reduce-body-fun
-           (λ (state-name pre-name maps-name)
-             (~? (begin reduce-body ...) (void))))
-         (define post-body-fun
-           (λ (state-name pre-name reduce-name)
-             (~? (begin post-body ...) (void))))
-         (define output-events-fun
-           (λ (state-name pre-name reduce-name)
-             (~? (events out-evt ...) (void))))
            
          (define system-name (create-system 'system-name))
          (set-system-body!
           system-name
           (let*
-              ([input-events (events evt-name ...)]
+              ([pre-body-fun (λ (state-name evts)
+                               #;(match-define (list evt-name ...) (hash->list evts))
+                               (~? (begin pre-body ...) (void)))]
+               [enabled-body-fun (λ (state-name pre-name)
+                                   (~? (begin post-body ...) (void)))]
+               [map-body-fun (λ (state-name pre-name)
+                               '(~? (begin map-body ...) (void)))]
+               [reduce-body-fun (λ (state-name pre-name maps-name)
+                                  (~? (begin reduce-body ...) (void)))]
+               [post-body-fun (λ (state-name pre-name reduce-name)
+                                (~? (begin post-body ...) (void)))]
+               [output-events-fun (λ (state-name pre-name reduce-name)
+                                    (~? (events out-evt ...) (void)))]
+               [input-events (events evt-name ...)]
                [state-0 (~? initial-state #f)]
                [state-name state-0]
                [pre-val-0 (pre-body-fun state-name evts)]
