@@ -1,6 +1,6 @@
 #lang racket/base
 (require (for-syntax syntax/parse racket/base racket/syntax racket/match)
-         graph racket/syntax racket/match)
+         graph racket/syntax racket/match racket/generic)
 
 (provide
  (all-defined-out)
@@ -40,9 +40,9 @@
 
 (define evts (make-hasheq))
 
-(define-values (prop:event event-prop? event-ref) (make-struct-type-property 'event))
+(define-generics event-generic)
 
-(struct event (name zero plus) #:property prop:event #t)
+(struct event (name zero plus) #:methods gen:event-generic [])
 (struct event:source event (input))
 (struct event:sink event (output))
 (struct event:transform event (f))
@@ -124,12 +124,12 @@
 
 ;; system struct
 
-(define-values (prop:system system-prop? system-ref) (make-struct-type-property 'system))
+(define-generics system-generic)
 
 (struct system
   (name body in state pre enabled query map reduce post out)
-  #:property prop:system #t
-  #:property prop:event #t
+  #:methods gen:system-generic []
+  #:methods gen:event-generic []
   #:mutable)
 
 (define (create-system
