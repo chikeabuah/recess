@@ -29,22 +29,15 @@
    (define (randomize-component component-generic)
      (counter 0))])
 
-(define I J L O S T Z)
-(struct shape (x)
+(define shapes '(I J L O S T Z))
+
+(struct shape (shape)
   #:methods gen:component-generic
   [(define (init-component component-generic)
-     )
+     (list-ref shapes (random (length shapes))))
    (define (randomize-component component-generic)
-     )])
+     (list-ref shapes (random (length shapes))))])
 
-(define (random-color)
-  "red")
-
-(define (random-shape)
-  "O")
-
-(define (unit-block)
-  0)
 
 (define (tetro-to-blocks e)
   e)

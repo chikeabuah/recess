@@ -19,23 +19,23 @@
 
 (define-syntax (define-component stx)
   (syntax-parse stx
-    [(_ name [~optional generic])
-     #'(begin
-         ;; this is so we can search for a component type with
-         ;; something like: Shape?, Timer?, etc
-         (define-generics name)
-         (struct component (id generic) #:methods gen:name [])
-         (define (create-component id [generic (λ (x) #t)])  
-           (component id generic))
-         (define name (create-component 'name (~? generic #f))))]))
+    [(_ name [~optional given-generic])
+     (with-syntax ([gen:name (format-id #'name "gen:~a" (syntax-e #'name))])
+       #'(begin
+           ;; this is so we can search for a component type with
+           ;; something like: Shape?, Timer?, etc
+           (define-generics name)
+           (struct component (id generic) #:methods gen:name [])
+           (define (create-component id [generic (λ (x) #t)])  
+             (component id generic))
+           (define name (create-component 'name (~? given-generic #f)))))]))
 
 ;; list of components
 (define-syntax (define-archetype stx)
   (syntax-parse stx
-    [(_ (name [arg-id default-expr] ...) components ...)
+    [(_ name components ...)
      #'(define name
-         (λ ([arg-id default-expr] ...)
-           components ...))]))
+           components ...)]))
 
 ;; An event is an identifier [also optionally a type predicate]
 
