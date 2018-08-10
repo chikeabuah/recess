@@ -8,21 +8,26 @@
 
 (define recess-graph (unweighted-graph/directed '()))
 
-;; A component is an identifier [and an expression]
-;; Seems that components should be λs eventually
-;; to support initialization
+;; A component is an identifier
+;; and optionally a struct that implements the component-generic
 
-(struct component (id type))
-
-(define (create-component id [type (λ (x) #t)])  
-  (component id type))
+;; The component generic describes the optional inner struct of the
+;; component which contains data.
+(define-generics component-generic
+  [init-component component-generic]
+  [randomize-component component-generic])
 
 (define-syntax (define-component stx)
   (syntax-parse stx
-    [(_ name [~optional type])
-     (begin
-       #;#''(name (~? type #f))
-       #'(define name (create-component 'name (~? type #f))))]))
+    [(_ name [~optional generic])
+     #'(begin
+         ;; this is so we can search for a component type with
+         ;; something like: Shape?, Timer?, etc
+         (define-generics name)
+         (struct component (id generic) #:methods gen:name [])
+         (define (create-component id [generic (λ (x) #t)])  
+           (component id generic))
+         (define name (create-component 'name (~? generic #f))))]))
 
 ;; list of components
 (define-syntax (define-archetype stx)

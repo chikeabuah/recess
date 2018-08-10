@@ -1,7 +1,6 @@
 #lang racket/base
-(require
-  "recess-graph.rkt"
-  "tetris-helpers.rkt")
+
+(require "tetris-implementation.rkt")
 
 ;; Tetris
 
