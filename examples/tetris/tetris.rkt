@@ -24,10 +24,10 @@
 
 ;;; XXX Archetypes
 
-(define-archetype (ActiveTetromino [shape (random-shape)] [color (random-color)])
+(define-archetype ActiveTetromino
   (list Shape Color Position Active))
 
-(define-archetype (Block [shape (unit-block)] [color (random-color)])
+(define-archetype Block 
   (list Shape Color Position)) 
 
 ;;; XXX Events
