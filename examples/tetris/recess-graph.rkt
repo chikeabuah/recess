@@ -1,6 +1,7 @@
 #lang racket/base
-(require (for-syntax syntax/parse racket/base racket/syntax racket/match)
-         graph racket/syntax racket/match racket/generic)
+(require
+  (for-syntax syntax/parse racket/base racket/syntax racket/match)
+  graph racket/syntax racket/match racket/generic racket/contract)
 
 (provide
  (all-defined-out)
@@ -17,6 +18,10 @@
   [init-component component-generic]
   [randomize-component component-generic])
 
+(struct component (id generic))
+
+(struct component:instance component (data) #:mutable)
+
 (define-syntax (define-component stx)
   (syntax-parse stx
     [(_ name [~optional given-generic])
@@ -25,9 +30,9 @@
            ;; this is so we can search for a component type with
            ;; something like: Shape?, Timer?, etc
            (define-generics name)
-           (struct component (id generic) #:methods gen:name [])
-           (define (create-component id [generic (λ (x) #t)])  
-             (component id generic))
+           (struct component:generic component () #:methods gen:name [])
+           (define (create-component id [generic (λ (x) #f)])  
+             (component:generic id generic))
            (define name (create-component 'name (~? given-generic #f)))))]))
 
 ;; list of components
@@ -35,7 +40,22 @@
   (syntax-parse stx
     [(_ name components ...)
      #'(define name
-           components ...)]))
+         (list components ...))]))
+
+;; entities
+
+(struct entity (id cmpnts) #:mutable)
+
+;; accepts a list of components
+(define/contract (create-entity cmpnts)
+  (->  (listof component?) entity?)
+  (entity
+   (gensym)
+   (for/list
+       ([cmpnt cmpnts])
+     (if (component-generic cmpnt)
+         (component:instance cmpnt (init-component cmpnt))
+         (component:instance cmpnt #f)))))
 
 ;; An event is an identifier [also optionally a type predicate]
 
@@ -235,13 +255,6 @@
     (for-each (lambda (arg)
                 (displayln arg))
               world-tsorted)))
-
-;; entities
-
-(struct entity (id cmpnts archetype) #:mutable)
-
-(define (create-entity id [cmpnts (λ (x) #t)] [archetype (λ (x) #t)])  
-  (entity id cmpnts archetype))
 
 ;; helper methods
 
