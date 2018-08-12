@@ -7,8 +7,6 @@
  (all-defined-out)
  (all-from-out racket/base racket/syntax racket/match graph))
 
-(define recess-graph (unweighted-graph/directed '()))
-
 ;; A component is an identifier
 ;; and optionally a struct that implements the component-generic
 
@@ -203,7 +201,7 @@
                [enabled-body-fun (λ (state-name pre-name)
                                    (~? (begin post-body ...) (void)))]
                [map-body-fun (λ (state-name pre-name)
-                               '(~? (begin map-body ...) (void)))]
+                               (~? (begin map-body ...) (void)))]
                [reduce-body-fun (λ (state-name pre-name maps-name)
                                   (~? (begin reduce-body ...) (void)))]
                [post-body-fun (λ (state-name pre-name reduce-name)
@@ -227,8 +225,7 @@
                [reduce-val (reduce-body-fun state-name pre-name maps-name)]
                [reduce-name reduce-val]
                [post (post-body-fun state-name pre-name reduce-name)]
-               [output-events (output-events-fun state-name pre-name reduce-name)]
-               )
+               [output-events (output-events-fun state-name pre-name reduce-name)])
             (begin
               #;'(map map-body entities)
               #;(foldl reduce-body zero entities)
@@ -243,23 +240,25 @@
 
 ;; worlds
 
+(define recess-graph (unweighted-graph/directed '()))
+
+(struct world (name entities dependency-graph))
+
+;; TODO: account for multiple worlds
 (define-syntax (define-world stx)
   (syntax-parse stx
-    [(_ world-name:id action!:id)
-     #'(action!)]))
+    [(_ world-name:id)
+     #'(define world-name (world 'world-name '() recess-graph))]))
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
-(define (start!)
+(define (start! world)
   (let ([world-tsorted (tsort recess-graph)])
     (for-each (lambda (arg)
                 (displayln arg))
               world-tsorted)))
 
 ;; helper methods
-
-(define-for-syntax (generate-temporary)
-  (gensym))
 
 (define (query archetype)
   ;; TODO: implement

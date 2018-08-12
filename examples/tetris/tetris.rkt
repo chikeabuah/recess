@@ -126,25 +126,25 @@
 (define-system increment-timer
   ;;#:archetype Timer    
   #:in [clock-tick/e 'changed]
-  #:map mapfn (λ (e) (set! e.Timer.val (add1 e.Timer.val))))
+  #:map mapfn (λ (e) '(set! e.Timer.val (add1 e.Timer.val))))
 
 (define-system increment-score
   ;;#:archetype Score
   #:in [collision-structure/e #t]
   #:in [increment-timer/e #t]
-  #:map mapfn (λ (e) (set! e.Score.val (add1 e.Score.val))))
+  #:map mapfn (λ (e) '(set! e.Score.val (add1 e.Score.val))))
 
 (define-system hard-drop    
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e #t]
   #:in [key/e 's]
-  #:map mapfn (λ (e) (set! e.Position.y (lowest-y e collision-structure/e))))
+  #:map mapfn (λ (e) '(set! e.Position.y (lowest-y e collision-structure/e))))
 
 (define-system soft-drop    
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e #t]
   #:in [key/e 'x]
-  #:map mapfn (λ (e) (set! e.Position.y (- e.Position.y 3))))
+  #:map mapfn (λ (e) '(set! e.Position.y (- e.Position.y 3))))
 
 (define-system rotate-ccw    
   ;;#:archetype ActiveTetromino
@@ -163,22 +163,25 @@
   #:in [clock-tick/e 'change]
   #:in [can-move-down?/e #t]
   #:map mapfn (λ (e)
-          (set! e.Position.y (sub1 e.Position.y))))
+          '(set! e.Position.y (sub1 e.Position.y))))
 
 (define-system move-right    
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e #t]
   #:in [can-move-right?/e #t]
   #:map mapfn (λ (e)
-          (set! e.Position.x (add1 e.Position.x))))
+          '(set! e.Position.x (add1 e.Position.x))))
 
 (define-system move-left    
   ;;#:archetype ActiveTetromino
   #:in [collision-structure/e #t]
   #:in [can-move-left?/e #t]
   #:map mapfn (λ (e)
-          (set! e.Position.x (sub1 e.Position.x))))
+          '(set! e.Position.x (sub1 e.Position.x))))
 
 ; XXX Worlds
 
-(define-world tetris start!)
+(define-world tetris)
+
+(start! tetris)
+
