@@ -47,13 +47,52 @@
 ;; accepts a list of components
 (define/contract (create-entity cmpnts)
   (->  (listof component?) entity?)
-  (entity
-   (gensym)
-   (for/list
-       ([cmpnt cmpnts])
-     (if (component-generic cmpnt)
-         (component:instance cmpnt (init-component cmpnt))
-         (component:instance cmpnt #f)))))
+  (let ([e (entity
+            (gensym)
+            (for/list
+                ([cmpnt cmpnts])
+              (if (component-generic cmpnt)
+                  (component:instance cmpnt (init-component cmpnt))
+                  (component:instance cmpnt #f))))]
+        [default-world (worlds-default recess-worlds)])
+    ;; add e to world
+    (when default-world (add-entity-to-world! e default-world))))
+
+(define (add-entity-to-world! e wrld)
+  (let ([current-ents (world-entities wrld)])
+    (set-world-entities! wrld (cons e current-ents))))
+
+;; worlds
+
+(define recess-graph (unweighted-graph/directed '()))
+
+(struct world (name entities dependency-graph) #:mutable)
+
+;; assuming that most programs will use a single world
+;; we can support a single-world mode where things are
+;; automatically added to the default world
+
+(struct worlds (default count) #:mutable)
+
+(define recess-worlds (worlds (λ (x) #f) 0))
+
+;; TODO: account for multiple worlds
+(define-syntax (define-world stx)
+  (syntax-parse stx
+    [(_ world-name:id)
+     #'(begin
+         (define world-name (world 'world-name '() recess-graph))
+         (set-worlds-count! recess-worlds (add1 (worlds-count recess-worlds)))
+         (unless (worlds-default recess-worlds)
+           (set-worlds-default! recess-worlds world-name)))]))
+
+;; create a topological ordering of the recess
+;; graph and execute the nodes in that order
+(define (start! world)
+  (let ([world-tsorted (tsort recess-graph)])
+    (for-each (lambda (arg)
+                (displayln arg))
+              world-tsorted)))
 
 ;; An event is an identifier [also optionally a type predicate]
 
@@ -227,36 +266,14 @@
                [post (post-body-fun state-name pre-name reduce-name)]
                [output-events (output-events-fun state-name pre-name reduce-name)])
             (begin
-              #;'(map map-body entities)
-              #;(foldl reduce-body zero entities)
+              #;(map map-name entities)
+              #;(foldl reduce-name zero entities)
               (set-system-in! system-name input-events)
               (displayln state-name)
-              #;(displayln output-events)
-              #;(add-to-graph 'system-name input-events output-events)
+              (displayln output-events)
               )))
          (add-to-graph system-name (system-in system-name) (list))
          system-name)]))
-
-
-;; worlds
-
-(define recess-graph (unweighted-graph/directed '()))
-
-(struct world (name entities dependency-graph))
-
-;; TODO: account for multiple worlds
-(define-syntax (define-world stx)
-  (syntax-parse stx
-    [(_ world-name:id)
-     #'(define world-name (world 'world-name '() recess-graph))]))
-
-;; create a topological ordering of the recess
-;; graph and execute the nodes in that order
-(define (start! world)
-  (let ([world-tsorted (tsort recess-graph)])
-    (for-each (lambda (arg)
-                (displayln arg))
-              world-tsorted)))
 
 ;; helper methods
 
