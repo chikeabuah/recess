@@ -10,11 +10,11 @@
 ;; A component is an identifier
 ;; and optionally a struct that implements the component-generic
 
-;; The component generic describes the optional inner struct of the
+;; The inner component generic describes the optional inner struct of the
 ;; component which contains data.
-(define-generics component-generic
-  [init-component component-generic]
-  [randomize-component component-generic])
+(define-generics inner-component-generic
+  [init-component inner-component-generic]
+  [randomize-component inner-component-generic])
 
 (struct component (id generic))
 
@@ -54,27 +54,44 @@
               (if (component-generic cmpnt)
                   (component:instance cmpnt (init-component cmpnt))
                   (component:instance cmpnt #f))))]
-        [default-world (worlds-default recess-worlds)])
+        [default-world (universe-default recess-universe)])
     ;; add e to world
     (when default-world (add-entity-to-world! e default-world))))
 
 (define (add-entity-to-world! e wrld)
-  (let ([current-ents (world-entities wrld)])
-    (set-world-entities! wrld (cons e current-ents))))
+  (let ([current-entities (world-entities wrld)])
+    (hash-set! current-entities (entity-id e) e)))
+
+(define (remove-entity-from-world! e wrld)
+  (let ([current-entities (world-entities wrld)])
+    (hash-remove! current-entities (entity-id e))))
+
+(define (get-entities-with-archetype wrld atype)
+  1)
+
+(define (entity-has-archetype? ent atype)
+  2)
+
+(define (entity-contains-archetype? ent atype)
+  3)
 
 ;; worlds
 
 (define recess-graph (unweighted-graph/directed '()))
 
+;; entities are a make-hasheq
 (struct world (name entities dependency-graph) #:mutable)
 
 ;; assuming that most programs will use a single world
 ;; we can support a single-world mode where things are
 ;; automatically added to the default world
 
-(struct worlds (default count) #:mutable)
+(struct universe (default world-count worlds) #:mutable)
 
-(define recess-worlds (worlds (λ (x) #f) 0))
+(define recess-universe (universe (λ (x) #f) 0 '()))
+
+(define (set-default-world wrld)
+  (set-universe-default! recess-universe wrld))
 
 ;; TODO: account for multiple worlds
 (define-syntax (define-world stx)
@@ -82,9 +99,9 @@
     [(_ world-name:id)
      #'(begin
          (define world-name (world 'world-name '() recess-graph))
-         (set-worlds-count! recess-worlds (add1 (worlds-count recess-worlds)))
-         (unless (worlds-default recess-worlds)
-           (set-worlds-default! recess-worlds world-name)))]))
+         (set-universe-world-count! recess-universe (add1 (universe-world-count recess-universe)))
+         (unless (universe-default recess-universe)
+           (set-universe-default! recess-universe world-name)))]))
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
