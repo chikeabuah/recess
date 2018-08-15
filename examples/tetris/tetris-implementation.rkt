@@ -9,33 +9,25 @@
 ;; Tetris component types
 
 (struct color (r g b)
-  #:methods gen:inner-component-generic
-  [(define (init-component inner-component-generic)
-     (color 0 0 0))
-   (define (randomize-component inner-component-generic)
-     (color (random 256) (random 256)) (random 256))])
+  #:methods gen:component-prototype-generic
+  [(define (init-component component-prototype-generic)
+     (color 0 0 0))])
 
 (struct posn (x y)
-  #:methods gen:inner-component-generic
-  [(define (init-component inner-component-generic)
-     (posn 5 0))
-   (define (randomize-component inner-component-generic)
+  #:methods gen:component-prototype-generic
+  [(define (init-component component-prototype-generic)
      (posn 5 0))])
 
 (struct counter (x)
-  #:methods gen:inner-component-generic
-  [(define (init-component inner-component-generic)
-     (counter 0))
-   (define (randomize-component inner-component-generic)
+  #:methods gen:component-prototype-generic
+  [(define (init-component component-prototype-generic)
      (counter 0))])
 
 (define shapes '(I J L O S T Z))
 
 (struct shape (shape)
-  #:methods gen:inner-component-generic
-  [(define (init-component inner-component-generic)
-     (list-ref shapes (random (length shapes))))
-   (define (randomize-component inner-component-generic)
+  #:methods gen:component-prototype-generic
+  [(define (init-component component-prototype-generic)
      (list-ref shapes (random (length shapes))))])
 
 

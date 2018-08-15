@@ -12,11 +12,10 @@
 
 ;; The inner component generic describes the optional inner struct of the
 ;; component which contains data.
-(define-generics inner-component-generic
-  [init-component inner-component-generic]
-  [randomize-component inner-component-generic])
+(define-generics component-prototype-generic
+  [init-component component-prototype-generic])
 
-(struct component (id generic))
+(struct component (id proto))
 
 (struct component:instance component (data) #:mutable)
 
@@ -51,12 +50,11 @@
             (gensym)
             (for/list
                 ([cmpnt cmpnts])
-              (if (component-generic cmpnt)
+              (if (component-proto cmpnt)
                   (component:instance cmpnt (init-component cmpnt))
-                  (component:instance cmpnt #f))))]
-        [default-world (universe-default recess-universe)])
+                  (component:instance cmpnt #f))))])
     ;; add e to world
-    (when default-world (add-entity-to-world! e default-world))))
+    (when current-world (add-entity-to-world! e current-world))))
 
 (define (add-entity-to-world! e wrld)
   (let ([current-entities (world-entities wrld)])
@@ -86,12 +84,11 @@
 ;; we can support a single-world mode where things are
 ;; automatically added to the default world
 
-(struct universe (default world-count worlds) #:mutable)
+(struct universe (worlds) #:mutable)
 
-(define recess-universe (universe (λ (x) #f) 0 '()))
+(define current-world (make-parameter #f))
 
-(define (set-default-world wrld)
-  (set-universe-default! recess-universe wrld))
+(define recess-universe (universe '()))
 
 ;; TODO: account for multiple worlds
 (define-syntax (define-world stx)
@@ -99,9 +96,8 @@
     [(_ world-name:id)
      #'(begin
          (define world-name (world 'world-name '() recess-graph))
-         (set-universe-world-count! recess-universe (add1 (universe-world-count recess-universe)))
-         (unless (universe-default recess-universe)
-           (set-universe-default! recess-universe world-name)))]))
+         (set-universe-worlds! recess-universe (cons world-name (universe-worlds recess-universe)))
+         (unless current-world (current-world world-name)))]))
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
