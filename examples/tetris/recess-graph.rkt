@@ -73,6 +73,9 @@
 (define (entity-contains-archetype? ent atype)
   3)
 
+(define (add-entity! e)
+  'add-entity-to-world)
+
 ;; worlds
 
 (define recess-graph (unweighted-graph/directed '()))
@@ -90,18 +93,9 @@
 
 (define recess-universe (universe '()))
 
-;; TODO: account for multiple worlds
-(define-syntax (define-world stx)
-  (syntax-parse stx
-    [(_ world-name:id)
-     #'(begin
-         (define world-name (world 'world-name '() recess-graph))
-         (set-universe-worlds! recess-universe (cons world-name (universe-worlds recess-universe)))
-         (unless (current-world) (current-world world-name)))]))
-
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
-(define (start! world)
+(define (begin-recess )
   (let ([world-tsorted (tsort recess-graph)])
     (for-each (lambda (arg)
                 (displayln arg))
@@ -124,6 +118,9 @@
 
 (define (create-event id [zero (λ (x) #t)] [plus (λ (x) #t)])  
   (event id zero plus))
+
+(define (set-event! key value)
+  'set-event)
 
 (define-syntax (define-event stx)
   (syntax-parse stx
@@ -289,6 +286,9 @@
          system-name)]))
 
 ;; helper methods
+
+(define (all-defined-systems)
+  'all-defined-systems)
 
 (define (query archetype)
   ;; TODO: implement

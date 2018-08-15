@@ -181,6 +181,10 @@
 
 ; XXX Worlds
 
-(define-world tetris)
+(module+ main
+ (begin-recess
+  #:systems all-defined-systems
+  #:initialize
+  (add-entity! 'first-tetro)
+  (set-event! 'first-event-key 'first-event-value)))
 
-(start! tetris)
