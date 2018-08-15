@@ -54,7 +54,7 @@
                   (component:instance cmpnt (init-component cmpnt))
                   (component:instance cmpnt #f))))])
     ;; add e to world
-    (when current-world (add-entity-to-world! e current-world))))
+    (when (current-world) (add-entity-to-world! e (current-world)))))
 
 (define (add-entity-to-world! e wrld)
   (let ([current-entities (world-entities wrld)])
@@ -97,7 +97,7 @@
      #'(begin
          (define world-name (world 'world-name '() recess-graph))
          (set-universe-worlds! recess-universe (cons world-name (universe-worlds recess-universe)))
-         (unless current-world (current-world world-name)))]))
+         (unless (current-world) (current-world world-name)))]))
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
