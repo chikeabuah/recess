@@ -87,10 +87,9 @@
 ;; we can support a single-world mode where things are
 ;; automatically added to the default world
 
+;; if we ever need to keep track of a list of worlds
 (struct universe (worlds) #:mutable)
-
 (define recess-universe (universe '()))
-
 (define current-world (make-parameter #f))
 
 ;; create a topological ordering of the recess
@@ -101,9 +100,14 @@
         (~seq #:initialize init-expr:expr ...))
      #'(parameterize ([current-world (world (gensym) (make-hasheq) recess-graph)])
          (let ([world-tsorted (tsort recess-graph)])
-           (for-each (lambda (arg)
-                       (displayln arg))
-                     world-tsorted)))]))
+           (begin
+             init-expr ...
+             (for-each (lambda (arg)
+                         (cond
+                           [(event? arg) (display "this is an event:") (displayln arg)]
+                           [(system? arg) (display "this is a system:") (displayln arg)]
+                           [else (display "unknown") (displayln arg)]))
+                       world-tsorted))))]))
 
 ;; An event is an identifier [also optionally a type predicate]
 
@@ -115,24 +119,25 @@
 
 (define-generics event-generic)
 
-(struct event (name zero plus) #:methods gen:event-generic [])
+(struct event (name value zero plus) #:methods gen:event-generic [])
 (struct event:source event (input))
 (struct event:sink event (output))
 (struct event:transform event (f))
 
-(define (create-event id [zero (λ (x) #t)] [plus (λ (x) #t)])  
-  (event id zero plus))
+(define (create-event id [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
+  (event id value zero plus))
 
 (define (set-event! key value)
   (hash-set! evts key value))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
-    [(_ name (~optional zero) (~optional plus))
+    [(_ name (~optional value) (~optional zero) (~optional plus))
      #'(begin
          ;; check first
-         (define name (create-event 'name (~? 'zero #f) (~? 'plus #f)))
-         (hash-set! evts name #f))]))
+         (define name (event 'name (~? value (λ (x) #t)) (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
+         (hash-set! evts name (~? value #f))
+         name)]))
 
 ;;; define-system syntax and identifier bindings
 
@@ -229,7 +234,7 @@
 (define-syntax (define-system stx)
   (syntax-parse stx
     [(_ system-name:id
-        (~seq #:in [evt-name:id in-evt:expr]) ...
+        (~seq #:in [in-evt-name:id in-evt-body:expr]) ...
         (~optional (~seq #:state [given-state-name:id initial-state:expr]))
         (~optional (~seq #:pre given-pre-name:id pre-body:expr ...))
         (~optional (~seq #:enabled? enabled?-body:expr ...))
@@ -242,8 +247,7 @@
      #:with pre-name #'(~? given-pre-name default-pre-name)
      #:with maps-name #'(~? given-maps-name default-maps-name)
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
-     #'(begin
-           
+     #'(begin   
          (define system-name (create-system 'system-name))
          (set-system-body!
           system-name
@@ -251,6 +255,9 @@
               ([pre-body-fun (λ (state-name evts)
                                #;(match-define (list evt-name ...) (hash->list evts))
                                (~? (begin pre-body ...) (void)))]
+               [input-events-fun (λ (pre-name)
+                                   (let ([input-events (list (create-event 'in-evt-name in-evt-body) ... )])
+                                     input-events))]
                [enabled-body-fun (λ (state-name pre-name)
                                    (~? (begin post-body ...) (void)))]
                [map-body-fun (λ (state-name pre-name)
@@ -260,12 +267,12 @@
                [post-body-fun (λ (state-name pre-name reduce-name)
                                 (~? (begin post-body ...) (void)))]
                [output-events-fun (λ (state-name pre-name reduce-name)
-                                    (~? (events out-evt ...) (void)))]
-               [input-events (events evt-name ...)]
+                                    (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
                [state-0 (~? initial-state #f)]
                [state-name state-0]
                [pre-val-0 (pre-body-fun state-name evts)]
                [pre-name pre-val-0]
+               [input-events (input-events-fun pre-name)]
                [enabled (enabled-body-fun state-name pre-name)]
                [entities
                 (if enabled (~? query (list)) (list))]
@@ -283,11 +290,11 @@
               #;(map map-name entities)
               #;(foldl reduce-name zero entities)
               (set-system-in! system-name input-events)
-              (displayln state-name)
-              (displayln output-events)
+              #;(displayln state-name)
+              #;(displayln output-events)
+              system
               )))
-         (add-to-graph system-name (system-in system-name) (list))
-         system-name)]))
+         (add-to-graph system-name (system-in system-name) (list)))]))
 
 ;; helper methods
 
@@ -304,21 +311,13 @@
     (for-each
      (λ (ev)
        (begin
-         (add-vertex! recess-graph (event-name ev))
-         (add-directed-edge! recess-graph (event-name ev) system-name)))
+         (add-vertex! recess-graph ev)
+         (add-directed-edge! recess-graph ev system-name)))
      input-events)
     (for-each
      (λ (ev)
        (begin
-         (add-vertex! recess-graph (event-name ev))
-         (add-directed-edge! recess-graph system-name (event-name ev))))
+         (add-vertex! recess-graph ev)
+         (add-directed-edge! recess-graph system-name ev)))
      output-events)
     #;(display (graphviz recess-graph))))
-
-
-;; helper macros
-
-(define-syntax (events stx)
-  (syntax-parse stx
-    [(_ ev ...)
-     #'(map create-event (list 'ev ...))]))
