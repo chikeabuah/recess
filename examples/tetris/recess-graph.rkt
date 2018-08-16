@@ -89,17 +89,21 @@
 
 (struct universe (worlds) #:mutable)
 
-(define current-world (make-parameter #f))
-
 (define recess-universe (universe '()))
+
+(define current-world (make-parameter #f))
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
-(define (begin-recess )
-  (let ([world-tsorted (tsort recess-graph)])
-    (for-each (lambda (arg)
-                (displayln arg))
-              world-tsorted)))
+(define-syntax (begin-recess stx)
+  (syntax-parse stx
+    [(_ (~seq #:systems system-id:id ...)
+        (~seq #:initialize init-expr:expr ...))
+     #'(parameterize ([current-world (world (gensym) (make-hasheq) recess-graph)])
+         (let ([world-tsorted (tsort recess-graph)])
+           (for-each (lambda (arg)
+                       (displayln arg))
+                     world-tsorted)))]))
 
 ;; An event is an identifier [also optionally a type predicate]
 
@@ -120,7 +124,7 @@
   (event id zero plus))
 
 (define (set-event! key value)
-  'set-event)
+  (hash-set! evts key value))
 
 (define-syntax (define-event stx)
   (syntax-parse stx

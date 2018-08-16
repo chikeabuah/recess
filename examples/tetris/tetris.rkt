@@ -187,4 +187,3 @@
   #:initialize
   (add-entity! 'first-tetro)
   (set-event! 'first-event-key 'first-event-value)))
-
