@@ -1,36 +1,113 @@
 #lang racket/base
-(require (for-syntax syntax/parse racket/base racket/syntax racket/match)
-         graph racket/syntax racket/match racket/generic)
+(require
+  (for-syntax syntax/parse racket/base racket/syntax racket/match)
+  graph racket/syntax racket/match racket/generic racket/contract)
 
 (provide
  (all-defined-out)
  (all-from-out racket/base racket/syntax racket/match graph))
 
-(define recess-graph (unweighted-graph/directed '()))
+;; A component is an identifier
+;; and optionally a struct that implements the component-generic
 
-;; A component is an identifier [and an expression]
-;; Seems that components should be λs eventually
-;; to support initialization
+;; The inner component generic describes the optional inner struct of the
+;; component which contains data.
+(define-generics component-prototype-generic
+  [init-component component-prototype-generic])
 
-(struct component (id type))
+(struct component (id proto))
 
-(define (create-component id [type (λ (x) #t)])  
-  (component id type))
+(struct component:instance component (data) #:mutable)
 
 (define-syntax (define-component stx)
   (syntax-parse stx
-    [(_ name [~optional type])
-     (begin
-       #;#''(name (~? type #f))
-       #'(define name (create-component 'name (~? type #f))))]))
+    [(_ name [~optional given-generic])
+     (with-syntax ([gen:name (format-id #'name "gen:~a" (syntax-e #'name))])
+       #'(begin
+           ;; this is so we can search for a component type with
+           ;; something like: Shape?, Timer?, etc
+           (define-generics name)
+           (struct component:generic component () #:methods gen:name [])
+           (define (create-component id [generic (λ (x) #f)])  
+             (component:generic id generic))
+           (define name (create-component 'name (~? given-generic #f)))))]))
 
 ;; list of components
 (define-syntax (define-archetype stx)
   (syntax-parse stx
-    [(_ (name [arg-id default-expr] ...) components ...)
+    [(_ name components ...)
      #'(define name
-         (λ ([arg-id default-expr] ...)
-           components ...))]))
+         (list components ...))]))
+
+;; entities
+
+(struct entity (id cmpnts) #:mutable)
+
+;; accepts a list of components
+(define/contract (create-entity cmpnts)
+  (->  (listof component?) entity?)
+  (let ([e (entity
+            (gensym)
+            (for/list
+                ([cmpnt cmpnts])
+              (if (component-proto cmpnt)
+                  (component:instance cmpnt (init-component cmpnt))
+                  (component:instance cmpnt #f))))])
+    ;; add e to world
+    (when (current-world) (add-entity-to-world! e (current-world)))))
+
+(define (add-entity-to-world! e wrld)
+  (let ([current-entities (world-entities wrld)])
+    (hash-set! current-entities (entity-id e) e)))
+
+(define (remove-entity-from-world! e wrld)
+  (let ([current-entities (world-entities wrld)])
+    (hash-remove! current-entities (entity-id e))))
+
+(define (get-entities-with-archetype wrld atype)
+  1)
+
+(define (entity-has-archetype? ent atype)
+  2)
+
+(define (entity-contains-archetype? ent atype)
+  3)
+
+(define (add-entity! e)
+  'add-entity-to-world)
+
+;; worlds
+
+(define recess-graph (unweighted-graph/directed '()))
+
+;; entities are a make-hasheq
+(struct world (name entities dependency-graph) #:mutable)
+
+;; assuming that most programs will use a single world
+;; we can support a single-world mode where things are
+;; automatically added to the default world
+
+;; if we ever need to keep track of a list of worlds
+(struct universe (worlds) #:mutable)
+(define recess-universe (universe '()))
+(define current-world (make-parameter #f))
+
+;; create a topological ordering of the recess
+;; graph and execute the nodes in that order
+(define-syntax (begin-recess stx)
+  (syntax-parse stx
+    [(_ (~seq #:systems system-id:id ...)
+        (~seq #:initialize init-expr:expr ...))
+     #'(parameterize ([current-world (world (gensym) (make-hasheq) recess-graph)])
+         (let ([world-tsorted (tsort recess-graph)])
+           (begin
+             init-expr ...
+             (for-each (lambda (arg)
+                         (cond
+                           [(event? arg) (display "this is an event:") (displayln arg)]
+                           [(system? arg) (display "this is a system:") (displayln arg)]
+                           [else (display "unknown") (displayln arg)]))
+                       world-tsorted))))]))
 
 ;; An event is an identifier [also optionally a type predicate]
 
@@ -42,21 +119,25 @@
 
 (define-generics event-generic)
 
-(struct event (name zero plus) #:methods gen:event-generic [])
+(struct event (name value zero plus) #:methods gen:event-generic [])
 (struct event:source event (input))
 (struct event:sink event (output))
 (struct event:transform event (f))
 
-(define (create-event id [zero (λ (x) #t)] [plus (λ (x) #t)])  
-  (event id zero plus))
+(define (create-event id [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
+  (event id value zero plus))
+
+(define (set-event! key value)
+  (hash-set! evts key value))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
-    [(_ name (~optional zero) (~optional plus))
+    [(_ name (~optional value) (~optional zero) (~optional plus))
      #'(begin
          ;; check first
-         (define name (create-event 'name (~? 'zero #f) (~? 'plus #f)))
-         (hash-set! evts name #f))]))
+         (define name (event 'name (~? value (λ (x) #t)) (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
+         (hash-set! evts name (~? value #f))
+         name)]))
 
 ;;; define-system syntax and identifier bindings
 
@@ -153,7 +234,7 @@
 (define-syntax (define-system stx)
   (syntax-parse stx
     [(_ system-name:id
-        (~seq #:in [evt-name:id in-evt:expr]) ...
+        (~seq #:in [in-evt-name:id in-evt-body:expr]) ...
         (~optional (~seq #:state [given-state-name:id initial-state:expr]))
         (~optional (~seq #:pre given-pre-name:id pre-body:expr ...))
         (~optional (~seq #:enabled? enabled?-body:expr ...))
@@ -166,8 +247,7 @@
      #:with pre-name #'(~? given-pre-name default-pre-name)
      #:with maps-name #'(~? given-maps-name default-maps-name)
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
-     #'(begin
-           
+     #'(begin   
          (define system-name (create-system 'system-name))
          (set-system-body!
           system-name
@@ -175,21 +255,24 @@
               ([pre-body-fun (λ (state-name evts)
                                #;(match-define (list evt-name ...) (hash->list evts))
                                (~? (begin pre-body ...) (void)))]
+               [input-events-fun (λ (pre-name)
+                                   (let ([input-events (list (create-event 'in-evt-name in-evt-body) ... )])
+                                     input-events))]
                [enabled-body-fun (λ (state-name pre-name)
                                    (~? (begin post-body ...) (void)))]
                [map-body-fun (λ (state-name pre-name)
-                               '(~? (begin map-body ...) (void)))]
+                               (~? (begin map-body ...) (void)))]
                [reduce-body-fun (λ (state-name pre-name maps-name)
                                   (~? (begin reduce-body ...) (void)))]
                [post-body-fun (λ (state-name pre-name reduce-name)
                                 (~? (begin post-body ...) (void)))]
                [output-events-fun (λ (state-name pre-name reduce-name)
-                                    (~? (events out-evt ...) (void)))]
-               [input-events (events evt-name ...)]
+                                    (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
                [state-0 (~? initial-state #f)]
                [state-name state-0]
                [pre-val-0 (pre-body-fun state-name evts)]
                [pre-name pre-val-0]
+               [input-events (input-events-fun pre-name)]
                [enabled (enabled-body-fun state-name pre-name)]
                [entities
                 (if enabled (~? query (list)) (list))]
@@ -202,46 +285,21 @@
                [reduce-val (reduce-body-fun state-name pre-name maps-name)]
                [reduce-name reduce-val]
                [post (post-body-fun state-name pre-name reduce-name)]
-               [output-events (output-events-fun state-name pre-name reduce-name)]
-               )
+               [output-events (output-events-fun state-name pre-name reduce-name)])
             (begin
-              #;'(map map-body entities)
-              #;(foldl reduce-body zero entities)
+              #;(map map-name entities)
+              #;(foldl reduce-name zero entities)
               (set-system-in! system-name input-events)
-              (displayln state-name)
+              #;(displayln state-name)
               #;(displayln output-events)
-              #;(add-to-graph 'system-name input-events output-events)
+              system
               )))
-         (add-to-graph system-name (system-in system-name) (list))
-         system-name)]))
-
-
-;; worlds
-
-(define-syntax (define-world stx)
-  (syntax-parse stx
-    [(_ world-name:id action!:id)
-     #'(action!)]))
-
-;; create a topological ordering of the recess
-;; graph and execute the nodes in that order
-(define (start!)
-  (let ([world-tsorted (tsort recess-graph)])
-    (for-each (lambda (arg)
-                (displayln arg))
-              world-tsorted)))
-
-;; entities
-
-(struct entity (id cmpnts archetype) #:mutable)
-
-(define (create-entity id [cmpnts (λ (x) #t)] [archetype (λ (x) #t)])  
-  (entity id cmpnts archetype))
+         (add-to-graph system-name (system-in system-name) (list)))]))
 
 ;; helper methods
 
-(define-for-syntax (generate-temporary)
-  (gensym))
+(define (all-defined-systems)
+  'all-defined-systems)
 
 (define (query archetype)
   ;; TODO: implement
@@ -253,21 +311,13 @@
     (for-each
      (λ (ev)
        (begin
-         (add-vertex! recess-graph (event-name ev))
-         (add-directed-edge! recess-graph (event-name ev) system-name)))
+         (add-vertex! recess-graph ev)
+         (add-directed-edge! recess-graph ev system-name)))
      input-events)
     (for-each
      (λ (ev)
        (begin
-         (add-vertex! recess-graph (event-name ev))
-         (add-directed-edge! recess-graph system-name (event-name ev))))
+         (add-vertex! recess-graph ev)
+         (add-directed-edge! recess-graph system-name ev)))
      output-events)
     #;(display (graphviz recess-graph))))
-
-
-;; helper macros
-
-(define-syntax (events stx)
-  (syntax-parse stx
-    [(_ ev ...)
-     #'(map create-event (list 'ev ...))]))

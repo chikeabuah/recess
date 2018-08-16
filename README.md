@@ -68,8 +68,7 @@ Below are desired properties regarding individual concepts:
   - (pre : SystemState x InEvents -> SystemState x B) --- Runs before the iteration to potentially update the state and gather some data for this iteration
   - (enabled : SystemState x B -> boolean) --- Decides if the query should be run (post will run any ways)
   - (query : Archetype) --- a specification of the entities that are needed
-  - A --- the type of the reduction
-  - (zero : SystemState x B -> A) --- the unit of the reduction for the iteration
+  - A --- the type of the map-reduce
   - (map : SystemState x B x Entity -> A) --- processes a single entity
   - (reduce : SystemState x B x seq A -> A) --- combines the results of many entities
   - OutEvents --- A static specification of which events may be output
