@@ -36,7 +36,7 @@
 
 (module+ main
  (begin-recess
-  #:systems sync-to-clock
+  #:systems subtract5 multiply5
   #:initialize (add-entity! (Count)) (set-event! clock/e 0)
   #:stop-when all-systems-stop))
   

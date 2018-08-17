@@ -10,8 +10,8 @@
 (define-component Count counter) 
 (define-event clock/e)
 
-;; the idea behind this system is to create a pattern
-;; using a numeric entity where we add increasing even numbers to get the next number
+;; the idea behind this system is to create a pattern using a numeric entity
+;; we add increasing even numbers to get the next number
 ;; for example: 
 ;; 0,+2 2,+4 6,+6 12,+8 20,+10 30,+12 42, …
 ;; we can model the system's state as the increasing even number
@@ -36,4 +36,5 @@
   #:systems sync-to-clock
   #:initialize (add-entity! (Count)) (set-event! clock/e 0)
   #:stop-when all-systems-stop))
+  
   
