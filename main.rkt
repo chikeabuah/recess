@@ -102,10 +102,17 @@
          (let ([world-tsorted (tsort recess-graph)])
            (begin
              init-expr ...
+             (displayln "executing recess graph...")
              (for-each (lambda (arg)
                          (cond
-                           [(event? arg) (display "this is an event:") (displayln arg)]
-                           [(system? arg) (display "this is a system:") (displayln arg)]
+                           [(event? arg)
+                            (display "this is an event:")
+                            (display arg)
+                            (displayln (event-name arg))]
+                           [(system? arg)
+                            (display "this is a system:")
+                            (display arg)
+                            (displayln (system-name arg))]
                            [else (display "unknown") (displayln arg)]))
                        world-tsorted))))]))
 
@@ -256,7 +263,8 @@
                                #;(match-define (list evt-name ...) (hash->list evts))
                                (~? (begin pre-body ...) (void)))]
                [input-events-fun (λ (pre-name)
-                                   (let ([input-events (list (create-event 'in-evt-name in-evt-body) ... )])
+                                   (let ([input-events
+                                          (list (create-event 'in-evt-name in-evt-body) ... )])
                                      input-events))]
                [enabled-body-fun (λ (state-name pre-name)
                                    (~? (begin post-body ...) (void)))]
