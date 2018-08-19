@@ -7,8 +7,8 @@
 (require (except-in racket set!)
          (rename-in racket [set! former-set!]))
 
-(define (set! id expr)
-  (cond [(entity? id) (set-entity! id expr)]
+(define (set! id expr [ref (λ (x) #f)])
+  (cond [(entity? id) (set-entity! id expr ref)]
         [else (former-set! id expr)]))
 
 (provide
