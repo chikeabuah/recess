@@ -14,7 +14,7 @@
 ;; operation using numeric entities
 (define-system factorial
   ;; every second
-  #:in [clock/e 'change]
+  #:in [seconds clock/e]
   ;; query for all entities that have the component/archetype: Count
   ;; bind the entities to the list ents
   ;; note: this is guaranteed to be an ordered list
@@ -23,7 +23,7 @@
   #:query ents (Count)
   ;; this system is enabled as long as the clock's value is less
   ;; than 12 seconds 
-  #:enabled? (< clock/e 12)
+  #:enabled? (< seconds 12)
   ;; compute factorial
   #:reduce fac 1 (λ (a b) (* a b))
   ;; every iteration create a new entity equal to the last one but incremented by 1
@@ -34,5 +34,5 @@
  (begin-recess
   #:systems factorial
   #:initialize (add-entity! (Count)) (set-event! clock/e 0)
-  #:stop-when all-systems-stop))
+  #:stop-when factorial))
   

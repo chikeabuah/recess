@@ -1,7 +1,15 @@
 #lang racket/base
+
 (require
   (for-syntax syntax/parse racket/base racket/syntax racket/match)
   graph racket/syntax racket/match racket/generic racket/contract)
+
+(require (except-in racket set!)
+         (rename-in racket [set! former-set!]))
+
+(define (set! id expr)
+  (cond [(entity? id) (set-entity! id expr)]
+        [else (former-set! id expr)]))
 
 (provide
  (all-defined-out)
@@ -41,20 +49,45 @@
 
 ;; entities
 
-(struct entity (id cmpnts) #:mutable)
+;; cmpnts is a (make-hasheq)
+(struct entity (id components) #:mutable)
 
 ;; accepts a list of components
-(define/contract (create-entity cmpnts)
+(define/contract (make-entity cmpnts)
   (->  (listof component?) entity?)
-  (let ([e (entity
-            (gensym)
-            (for/list
+  (let* ([e (create-entity (gensym))]
+         [hash (make-hasheq)]
+         [_ (for/list
                 ([cmpnt cmpnts])
+              ;; check if it's a component with data or not
               (if (component-proto cmpnt)
-                  (component:instance cmpnt (init-component cmpnt))
-                  (component:instance cmpnt #f))))])
+                  ;; this means component types are unique in an entity
+                  (hash-set!
+                   hash
+                   (component-id cmpnt)
+                   (component:instance cmpnt (init-component cmpnt)))
+                  (hash-set!
+                   hash
+                   (component-id cmpnt)
+                   (component:instance cmpnt #f))))]
+         [_ (set-entity-components! e hash)])
     ;; add e to world
     (when (current-world) (add-entity-to-world! e (current-world)))))
+
+(define (create-entity id [cmpnts (λ (x) #t)])  
+  (entity id cmpnts))
+
+(define (set-entity! e expr [ref (λ (x) #f)])
+  ;; if the entity has just one component then it is unambiguous
+  ;; if it has more than one component then we need a reference to 
+  ;; the component to set it
+  (let* ([cmpnts-hash (entity-components e)]
+         [keys (hash-keys cmpnts-hash)]
+         [cmpnts-length (length keys)])
+    (cond 
+      [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
+      [ref (hash-set! cmpnts-hash ref expr)]
+      [else (raise "attempt to set entity was too ambiguous")])))
 
 (define (add-entity-to-world! e wrld)
   (let ([current-entities (world-entities wrld)])

@@ -19,18 +19,18 @@
 ;; also they will not always be in sync because their termination conditions are different
 (define-system subtract5
   ;; every second
-  #:in [clock/e 'change]
+  #:in [seconds clock/e]
   #:query e (Count)
-  #:enabled? (< clock/e 10)
+  #:enabled? (< seconds 10)
   ;; every iteration increment subtract 5 from e
   #:post (set! e (- e 5)))
 
   (define-system multiply5
   ;; every second
-  #:in [clock/e 'change]
-  #:in [subtract5/e 'change]
+  #:in [seconds clock/e]
+  #:in [on-subtract subtract5]
   #:query e (Count)
-  #:enabled? (< clock/e 15)
+  #:enabled? (< seconds 15)
   ;; every iteration multiply e by 5
   #:post (set! e (* e 5)))
 
@@ -38,5 +38,5 @@
  (begin-recess
   #:systems subtract5 multiply5
   #:initialize (add-entity! (Count)) (set-event! clock/e 0)
-  #:stop-when all-systems-stop))
+  #:stop-when multiply5))
   

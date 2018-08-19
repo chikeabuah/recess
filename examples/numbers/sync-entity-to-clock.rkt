@@ -14,13 +14,13 @@
 ;; a numeric entity with a time clock
 (define-system sync-to-clock
   ;; every second
-  #:in [clock/e 'change]
+  #:in [seconds clock/e]
   ;; query for all entities that have the component/archetype: Count
   ;; we know there will only be one so bind it to e
   #:query e (Count)
   ;; this system is enabled as long as the clock's value is less
   ;; than 15 seconds 
-  #:enabled? (< clock/e 15)
+  #:enabled? (< seconds 15)
   ;; every iteration increment e by 1 and print it
   #:post (add1! e) (display e))
 
@@ -28,5 +28,5 @@
  (begin-recess
   #:systems sync-to-clock
   #:initialize (add-entity! (Count)) (set-event! clock/e 0)
-  #:stop-when all-systems-stop))
+  #:stop-when sync-to-clock))
   

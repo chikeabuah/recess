@@ -8,7 +8,7 @@
 ;; a system's internal state with a time clock
 (define-system sync-to-clock
   ;; every second
-  #:in [clock/e 'change]
+  #:in [seconds clock/e]
   ;; there is a binding called x in our state
   ;; initially it has the value of 5
   #:state [x 5]
@@ -21,5 +21,5 @@
  (begin-recess
   #:systems sync-to-clock
   #:initialize (set-event! clock/e 0)
-  #:stop-when all-systems-stop))
+  #:stop-when sync-to-clock))
   

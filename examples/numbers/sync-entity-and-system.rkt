@@ -18,7 +18,7 @@
 ;; and the entity is the base number
 (define-system sync-to-clock
   ;; every second
-  #:in [clock/e 'change]
+  #:in [seconds clock/e]
   ;; there is a binding called x in our state
   ;; initially it has the value of 5
   #:state [x 2]
@@ -27,7 +27,7 @@
   #:query e (Count)
   ;; this system is enabled as long as the clock's value is less
   ;; than 15 seconds 
-  #:enabled? (< clock/e 20)
+  #:enabled? (< seconds 20)
   ;; every iteration increment e by 1 and print it
   #:post (set! e (+ e x)) (display e) (set! x (+ x 2)))
 
@@ -35,6 +35,6 @@
  (begin-recess
   #:systems sync-to-clock
   #:initialize (add-entity! (Count)) (set-event! clock/e 0)
-  #:stop-when all-systems-stop))
+  #:stop-when sync-to-clock))
   
   
