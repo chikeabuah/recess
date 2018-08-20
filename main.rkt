@@ -124,6 +124,8 @@
 (struct universe (worlds) #:mutable)
 (define recess-universe (universe '()))
 (define current-world (make-parameter #f))
+(define current-events (make-parameter #f))
+
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
@@ -133,26 +135,29 @@
         (~seq #:initialize init-expr:expr ...)
         (~seq #:stop-when stop-expr:expr ...))
      #'(parameterize ([current-world (world (gensym) (make-hasheq) recess-graph)])
-         (let ([world-tsorted (tsort recess-graph)])
-           (begin
-             init-expr ...
-             (let loop ()
-               (displayln "executing recess graph...")
-               (for-each (lambda (arg)
-                           (cond
-                             [(event? arg)
-                              (display "this is an event:")
-                              (display arg)
-                              (displayln (event-name arg))]
-                             [(system? arg)
-                              (display "this is a system:")
-                              (display arg)
-                              (displayln (system-id arg))
-                              (displayln "executing system:")
-                              ((system-body arg) arg)]
-                             [else (display "unknown") (displayln arg)]))
-                         world-tsorted)
-               (when (systems-enabled? (list stop-expr ...)) (loop))))))]))
+         (begin
+           init-expr ...
+           (let loop ()
+             (displayln "executing recess graph...")
+             (step-world)
+             (when (systems-enabled? (list stop-expr ...)) (loop)))))]))
+
+;; do a single iteration of a world
+(define (step-world) 
+  (for-each (lambda (arg)
+              (cond
+                [(event? arg)
+                 (display "this is an event:")
+                 (display arg)
+                 (displayln (event-name arg))]
+                [(system? arg)
+                 (display "this is a system:")
+                 (display arg)
+                 (displayln (system-id arg))
+                 (displayln "executing system:")
+                 ((system-body arg) arg)]
+                [else (display "unknown") (displayln arg)]))
+            (tsort (world-dependency-graph (current-world)))))
 
 (define (systems-enabled? systems)
   (let ([enabled? (λ (sys) (system-enabled sys))])
