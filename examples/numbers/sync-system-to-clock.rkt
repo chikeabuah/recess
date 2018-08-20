@@ -1,8 +1,6 @@
 #lang racket/base
 
 (require recess)
-     
-(define-event clock/e)
 
 ;; the idea behind this system is to synchronize
 ;; a system's internal state with a time clock

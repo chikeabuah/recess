@@ -8,7 +8,6 @@
      (counter 0))])
      
 (define-component Count counter) 
-(define-event clock/e)
 
 ;; the idea behind this system is to synchronize
 ;; a numeric entity with a time clock

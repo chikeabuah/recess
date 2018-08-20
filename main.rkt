@@ -168,13 +168,13 @@
 
 (define-generics event-generic)
 
-(struct event (name value zero plus) #:methods gen:event-generic [])
+(struct event (name zero plus) #:methods gen:event-generic [])
 (struct event:source event (input))
 (struct event:sink event (output))
 (struct event:transform event (f))
 
 (define (create-event id [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
-  (event id value zero plus))
+  (event id zero plus))
 
 (define (set-event! key value)
   (hash-set! evts key value))
@@ -184,9 +184,20 @@
     [(_ name (~optional value) (~optional zero) (~optional plus))
      #'(begin
          ;; check first
-         (define name (event 'name (~? value (λ (x) #t)) (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
+         (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
          (hash-set! evts name (~? value #f))
          name)]))
+
+;;; i'm imagining a library of pre-defined source events
+;;; the source events can take an input which is a lambda
+;;; we want to poll the sources to produce their value
+
+;; clock event
+
+;; just an epoch for now
+(define clock/e (event:source 'clock/e #f #f (λ () (current-seconds))))
+;; record value in the hash table as a lambda
+(hash-set! evts 'clock/e (λ () (current-seconds)))
 
 ;;; define-system syntax and identifier bindings
 

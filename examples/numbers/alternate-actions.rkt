@@ -8,7 +8,6 @@
      (counter 0))])
      
 (define-component Count counter) 
-(define-event clock/e)
 
 ;; the idea in this example is to create a numeric pattern
 ;; using a single entity
