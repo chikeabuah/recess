@@ -12,10 +12,10 @@
   ;; there is a binding called x in our state
   ;; initially it has the value of 5
   #:state [x 5]
-  ;; this system is enabled as long as x is less than 15
-  #:enabled? (< x 15)
   ;; every iteration increment x by 1
-  #:post (add1! x))
+  #:pre _ (displayln x) (+ x 1)
+  ;; this system is enabled as long as x is less than 15
+  #:enabled? (< x 15))
 
 (module+ main
  (begin-recess
