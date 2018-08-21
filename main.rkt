@@ -144,7 +144,8 @@
              (when (systems-enabled? (list stop-expr ...)) (loop)))))]))
 
 ;; do a single iteration of a world
-(define (step-world) 
+(define (step-world)
+  (define tsorted-world (tsort (world-dependency-graph (current-world))))
   (for-each (lambda (arg)
               (cond
                 [(event? arg)
@@ -158,7 +159,7 @@
                  (displayln "executing system:")
                  ((system-body arg) arg)]
                 [else (display "unknown") (displayln arg)]))
-            (tsort (world-dependency-graph (current-world)))))
+            tsorted-world))
 
 ;; the idea here is to poll the events by examing the hash values
 ;; if the hash value is a thunk we invoke it and replace the
