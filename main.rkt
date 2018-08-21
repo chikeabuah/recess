@@ -81,13 +81,13 @@
   ;; if the entity has just one component then it is unambiguous
   ;; if it has more than one component then we need a reference to 
   ;; the component to set it
-  (let* ([cmpnts-hash (entity-components e)]
-         [keys (hash-keys cmpnts-hash)]
-         [cmpnts-length (length keys)])
-    (cond 
-      [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
-      [ref (hash-set! cmpnts-hash ref expr)]
-      [else (raise "attempt to set entity was too ambiguous")])))
+  (define cmpnts-hash (entity-components e))
+  (define keys (hash-keys cmpnts-hash))
+  (define cmpnts-length (length keys))
+  (cond 
+    [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
+    [ref (hash-set! cmpnts-hash ref expr)]
+    [else (raise "attempt to set entity was too ambiguous")]))
 
 (define (add-entity-to-world! e wrld)
   (let ([current-entities (world-entities wrld)])
@@ -124,8 +124,7 @@
 (struct universe (worlds) #:mutable)
 (define recess-universe (universe '()))
 (define current-world (make-parameter #f))
-(define current-events (make-parameter #f))
-
+(define current-events (make-parameter (make-hasheq)))
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
@@ -138,8 +137,10 @@
          (begin
            init-expr ...
            (let loop ()
-             (displayln "executing recess graph...")
-             (step-world)
+             ;; poll events
+             (parameterize ([current-events (poll-events (current-events))])
+               (displayln "executing recess graph...")
+               (step-world))
              (when (systems-enabled? (list stop-expr ...)) (loop)))))]))
 
 ;; do a single iteration of a world
@@ -159,6 +160,17 @@
                 [else (display "unknown") (displayln arg)]))
             (tsort (world-dependency-graph (current-world)))))
 
+;; the idea here is to poll the events by examing the hash values
+;; if the hash value is a thunk we invoke it and replace the
+;; thunk with its result
+(define (poll-events evnts)
+  (->  hash-eq? hash-eq?)
+  (define (poll event-pair)
+    (if (procedure? (cdr event-pair))
+        (cons (car event-pair) ((cdr event-pair)))
+        event-pair))
+  (make-hasheq (map poll (hash->list evnts))))
+
 (define (systems-enabled? systems)
   (let ([enabled? (λ (sys) (system-enabled sys))])
     (andmap enabled? systems)))
@@ -168,8 +180,6 @@
 ;; event ideas:
 ;; requiring a system as an implicit event = requiring all of that system's output events
 ;; in addition to an implicit event matching the system's name
-
-(define evts (make-hasheq))
 
 (define-generics event-generic)
 
@@ -182,7 +192,7 @@
   (event id zero plus))
 
 (define (set-event! key value)
-  (hash-set! evts key value))
+  (hash-set! (current-events) key value))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
@@ -190,7 +200,7 @@
      #'(begin
          ;; check first
          (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
-         (hash-set! evts name (~? value #f))
+         (hash-set! (current-events) name (~? value #f))
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
@@ -202,7 +212,7 @@
 ;; just an epoch for now
 (define clock/e (event:source 'clock/e #f #f (λ () (current-seconds))))
 ;; record value in the hash table as a lambda
-(hash-set! evts 'clock/e (λ () (current-seconds)))
+(hash-set! (current-events) 'clock/e (λ () (current-seconds)))
 
 ;;; define-system syntax and identifier bindings
 
@@ -339,7 +349,7 @@
                     (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
                  [state-0 (if prior-state prior-state (~? initial-state #f)) ]
                  [state-name state-0]
-                 [pre-val-0 (pre-body-fun state-name evts)]
+                 [pre-val-0 (pre-body-fun state-name (current-events))]
                  [pre-name pre-val-0]
                  [state-name pre-name]
                  [input-events (input-events-fun pre-name)]
