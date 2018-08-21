@@ -1,7 +1,15 @@
 #lang racket/base
+
 (require
   (for-syntax syntax/parse racket/base racket/syntax racket/match)
   graph racket/syntax racket/match racket/generic racket/contract)
+
+(require (except-in racket set!)
+         (rename-in racket [set! former-set!]))
+
+(define (set! id expr [ref (λ (x) #f)])
+  (cond [(entity? id) (set-entity! id expr ref)]
+        [else (former-set! id expr)]))
 
 (provide
  (all-defined-out)
@@ -41,20 +49,45 @@
 
 ;; entities
 
-(struct entity (id cmpnts) #:mutable)
+;; cmpnts is a (make-hasheq)
+(struct entity (id components) #:mutable)
 
 ;; accepts a list of components
-(define/contract (create-entity cmpnts)
+(define/contract (make-entity cmpnts)
   (->  (listof component?) entity?)
-  (let ([e (entity
-            (gensym)
-            (for/list
+  (let* ([e (create-entity (gensym))]
+         [hash (make-hasheq)]
+         [_ (for/list
                 ([cmpnt cmpnts])
+              ;; check if it's a component with data or not
               (if (component-proto cmpnt)
-                  (component:instance cmpnt (init-component cmpnt))
-                  (component:instance cmpnt #f))))])
+                  ;; this means component types are unique in an entity
+                  (hash-set!
+                   hash
+                   (component-id cmpnt)
+                   (component:instance cmpnt (init-component cmpnt)))
+                  (hash-set!
+                   hash
+                   (component-id cmpnt)
+                   (component:instance cmpnt #f))))]
+         [_ (set-entity-components! e hash)])
     ;; add e to world
     (when (current-world) (add-entity-to-world! e (current-world)))))
+
+(define (create-entity id [cmpnts (λ (x) #t)])  
+  (entity id cmpnts))
+
+(define (set-entity! e expr [ref (λ (x) #f)])
+  ;; if the entity has just one component then it is unambiguous
+  ;; if it has more than one component then we need a reference to 
+  ;; the component to set it
+  (let* ([cmpnts-hash (entity-components e)]
+         [keys (hash-keys cmpnts-hash)]
+         [cmpnts-length (length keys)])
+    (cond 
+      [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
+      [ref (hash-set! cmpnts-hash ref expr)]
+      [else (raise "attempt to set entity was too ambiguous")])))
 
 (define (add-entity-to-world! e wrld)
   (let ([current-entities (world-entities wrld)])
@@ -91,30 +124,44 @@
 (struct universe (worlds) #:mutable)
 (define recess-universe (universe '()))
 (define current-world (make-parameter #f))
+(define current-events (make-parameter #f))
+
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
 (define-syntax (begin-recess stx)
   (syntax-parse stx
-    [(_ (~seq #:systems system-id:id ...)
-        (~seq #:initialize init-expr:expr ...))
+    [(_ (~seq #:systems system-name:id ...)
+        (~seq #:initialize init-expr:expr ...)
+        (~seq #:stop-when stop-expr:expr ...))
      #'(parameterize ([current-world (world (gensym) (make-hasheq) recess-graph)])
-         (let ([world-tsorted (tsort recess-graph)])
-           (begin
-             init-expr ...
+         (begin
+           init-expr ...
+           (let loop ()
              (displayln "executing recess graph...")
-             (for-each (lambda (arg)
-                         (cond
-                           [(event? arg)
-                            (display "this is an event:")
-                            (display arg)
-                            (displayln (event-name arg))]
-                           [(system? arg)
-                            (display "this is a system:")
-                            (display arg)
-                            (displayln (system-name arg))]
-                           [else (display "unknown") (displayln arg)]))
-                       world-tsorted))))]))
+             (step-world)
+             (when (systems-enabled? (list stop-expr ...)) (loop)))))]))
+
+;; do a single iteration of a world
+(define (step-world) 
+  (for-each (lambda (arg)
+              (cond
+                [(event? arg)
+                 (display "this is an event:")
+                 (display arg)
+                 (displayln (event-name arg))]
+                [(system? arg)
+                 (display "this is a system:")
+                 (display arg)
+                 (displayln (system-id arg))
+                 (displayln "executing system:")
+                 ((system-body arg) arg)]
+                [else (display "unknown") (displayln arg)]))
+            (tsort (world-dependency-graph (current-world)))))
+
+(define (systems-enabled? systems)
+  (let ([enabled? (λ (sys) (system-enabled sys))])
+    (andmap enabled? systems)))
 
 ;; An event is an identifier [also optionally a type predicate]
 
@@ -126,13 +173,13 @@
 
 (define-generics event-generic)
 
-(struct event (name value zero plus) #:methods gen:event-generic [])
+(struct event (name zero plus) #:methods gen:event-generic [])
 (struct event:source event (input))
 (struct event:sink event (output))
 (struct event:transform event (f))
 
 (define (create-event id [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
-  (event id value zero plus))
+  (event id zero plus))
 
 (define (set-event! key value)
   (hash-set! evts key value))
@@ -142,9 +189,20 @@
     [(_ name (~optional value) (~optional zero) (~optional plus))
      #'(begin
          ;; check first
-         (define name (event 'name (~? value (λ (x) #t)) (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
+         (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
          (hash-set! evts name (~? value #f))
          name)]))
+
+;;; i'm imagining a library of pre-defined source events
+;;; the source events can take an input which is a lambda
+;;; we want to poll the sources to produce their value
+
+;; clock event
+
+;; just an epoch for now
+(define clock/e (event:source 'clock/e #f #f (λ () (current-seconds))))
+;; record value in the hash table as a lambda
+(hash-set! evts 'clock/e (λ () (current-seconds)))
 
 ;;; define-system syntax and identifier bindings
 
@@ -215,23 +273,23 @@
 (define-generics system-generic)
 
 (struct system
-  (name body in state pre enabled query map reduce post out)
+  (id body in state pre enabled query map reduce post out)
   #:methods gen:system-generic []
   #:methods gen:event-generic []
   #:mutable)
 
 (define (create-system
          name
-         [body (λ (x) #t)]
-         [in (λ (x) #t)]
-         [state (λ (x) #t)]
-         [pre (λ (x) #t)]
-         [enabled (λ (x) #t)]
-         [query (λ (x) #t)]
-         [map (λ (x) #t)]
-         [reduce (λ (x) #t)]
-         [post (λ (x) #t)]
-         [out (λ (x) #t)])
+         [body (λ (x) #f)]
+         [in (λ (x) #f)]
+         [state #f]
+         [pre (λ (x) #f)]
+         [enabled (λ (x) #f)]
+         [query (λ (x) #f)]
+         [map (λ (x) #f)]
+         [reduce (λ (x) #f)]
+         [post (λ (x) #f)]
+         [out (λ (x) #f)])
   (system name body in state pre enabled query map reduce post out))
 
 ;; register a system in the graph and have it print out the graph's
@@ -258,51 +316,55 @@
          (define system-name (create-system 'system-name))
          (set-system-body!
           system-name
-          (let*
-              ([pre-body-fun (λ (state-name evts)
-                               #;(match-define (list evt-name ...) (hash->list evts))
-                               (~? (begin pre-body ...) (void)))]
-               [input-events-fun (λ (pre-name)
-                                   (let ([input-events
-                                          (list (create-event 'in-evt-name in-evt-body) ... )])
-                                     input-events))]
-               [enabled-body-fun (λ (state-name pre-name)
-                                   (~? (begin post-body ...) (void)))]
-               [map-body-fun (λ (state-name pre-name)
-                               (~? (begin map-body ...) (void)))]
-               [reduce-body-fun (λ (state-name pre-name maps-name)
-                                  (~? (begin reduce-body ...) (void)))]
-               [post-body-fun (λ (state-name pre-name reduce-name)
-                                (~? (begin post-body ...) (void)))]
-               [output-events-fun (λ (state-name pre-name reduce-name)
-                                    (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
-               [state-0 (~? initial-state #f)]
-               [state-name state-0]
-               [pre-val-0 (pre-body-fun state-name evts)]
-               [pre-name pre-val-0]
-               [input-events (input-events-fun pre-name)]
-               [enabled (enabled-body-fun state-name pre-name)]
-               [entities
-                (if enabled (~? query (list)) (list))]
-               [maps-val
-                (if
-                 enabled
-                 (map-body-fun state-name pre-name)
-                 (list))]
-               [maps-name maps-val]
-               [reduce-val (reduce-body-fun state-name pre-name maps-name)]
-               [reduce-name reduce-val]
-               [post (post-body-fun state-name pre-name reduce-name)]
-               [output-events (output-events-fun state-name pre-name reduce-name)])
-            (begin
-              #;(map map-name entities)
-              #;(foldl reduce-name zero entities)
-              (set-system-in! system-name input-events)
-              #;(displayln state-name)
-              #;(displayln output-events)
-              system
-              )))
-         (add-to-graph system-name (system-in system-name) (list)))]))
+          (λ (sys)
+            (let*
+                ([prior-state (system-state sys)]
+                 [pre-body-fun (λ (state-name events)
+                                 #;(match-define (list evt-name ...) (hash->list events))
+                                 (~? (begin pre-body ...) (void)))]
+                 [input-events-fun (λ (pre-name)
+                                     (let ([input-events
+                                            (list (create-event 'in-evt-name in-evt-body) ... )])
+                                       input-events))]
+                 [enabled-body-fun (λ (state-name pre-name)
+                                     (~? (and enabled?-body ...) (void)))]
+                 [map-body-fun (λ (state-name pre-name)
+                                 (~? (begin map-body ...) (void)))]
+                 [reduce-body-fun (λ (state-name pre-name maps-name)
+                                    (~? (begin reduce-body ...) (void)))]
+                 [post-body-fun (λ (state-name pre-name reduce-name)
+                                  (~? (begin post-body ...) (void)))]
+                 [output-events-fun
+                  (λ (state-name pre-name reduce-name)
+                    (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
+                 [state-0 (if prior-state prior-state (~? initial-state #f)) ]
+                 [state-name state-0]
+                 [pre-val-0 (pre-body-fun state-name evts)]
+                 [pre-name pre-val-0]
+                 [state-name pre-name]
+                 [input-events (input-events-fun pre-name)]
+                 [enabled (enabled-body-fun state-name pre-name)]
+                 [entities
+                  (if enabled (~? query (list)) (list))]
+                 [maps-val
+                  (if
+                   enabled
+                   (map-body-fun state-name pre-name)
+                   (list))]
+                 [maps-name maps-val]
+                 [reduce-val (reduce-body-fun state-name pre-name maps-name)]
+                 [reduce-name reduce-val]
+                 [post (post-body-fun state-name pre-name reduce-name)]
+                 [output-events (output-events-fun state-name pre-name reduce-name)])
+              (begin
+                #;(map map-name entities)
+                #;(foldl reduce-name zero entities)
+                (set-system-in! system-name input-events)
+                (set-system-state! system-name state-name)
+                (set-system-enabled! system-name enabled)))))
+         ((system-body system-name) system-name)
+         (add-to-graph system-name (system-in system-name) (list))
+         system-name)]))
 
 ;; helper methods
 
