@@ -335,8 +335,8 @@
           (λ (sys)
             (let*
                 ([prior-state (system-state sys)]
-                 [pre-body-fun (λ (state-name events)
-                                 #;(match-define (list evt-name ...) (hash->list events))
+                 [pre-body-fun (λ (state-name evts)
+                                 (match-define (list evt-name ...) evts)
                                  (~? (begin pre-body ...) (void)))]
                  [enabled-body-fun (λ (state-name pre-name)
                                      (~? (and enabled?-body ...) (void)))]
@@ -351,7 +351,8 @@
                     (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
                  [state-0 (if prior-state prior-state (~? initial-state #f)) ]
                  [state-name state-0]
-                 [pre-val-0 (pre-body-fun state-name (current-events))]
+                 [get-event-vals (λ (e) (hash-ref (current-events) (event-name e)))]
+                 [pre-val-0 (pre-body-fun state-name (map get-event-vals (list evt ...)))]
                  [pre-name pre-val-0]
                  [state-name pre-name]
                  [input-events (let-values ([(evt-name ...) (values evt ...)])
