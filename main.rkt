@@ -16,16 +16,9 @@
  (all-from-out racket/base racket/syntax racket/match graph))
 
 ;; A component is an identifier
-;; and optionally a struct that implements the component-generic
-
-;; The inner component generic describes the optional inner struct of the
-;; component which contains data.
-(define-generics component-prototype-generic
-  [init-component component-prototype-generic])
+;; and optionally some other data
 
 (struct component (id proto))
-
-(struct component:instance component (data) #:mutable)
 
 (define-syntax (define-component stx)
   (syntax-parse stx
@@ -53,23 +46,23 @@
 (struct entity (id components) #:mutable)
 
 ;; accepts a list of components
-(define/contract (make-entity cmpnts)
-  (->  (listof component?) entity?)
+(define/contract (make-entity! cmpnts)
+  (->  (listof component?) void?)
   (let* ([e (create-entity (gensym))]
          [hash (make-hasheq)]
          [_ (for/list
                 ([cmpnt cmpnts])
               ;; check if it's a component with data or not
               (if (component-proto cmpnt)
-                  ;; this means component types are unique in an entity
+                  ;; NOTE: this means components are unique in an entity
                   (hash-set!
                    hash
                    (component-id cmpnt)
-                   (component:instance cmpnt (init-component cmpnt)))
+                   (component-proto cmpnt))
                   (hash-set!
                    hash
                    (component-id cmpnt)
-                   (component:instance cmpnt #f))))]
+                   #t)))]
          [_ (set-entity-components! e hash)])
     ;; add e to world
     (when (current-world) (add-entity-to-world! e (current-world)))))
@@ -106,8 +99,10 @@
 (define (entity-contains-archetype? ent atype)
   3)
 
-(define (add-entity! e)
-  'add-entity-to-world)
+(define add-entity! make-entity!)
+
+(define (get ent ref)
+  (hash-ref (entity-components ent) ref))
 
 ;; worlds
 
@@ -123,6 +118,7 @@
 (define recess-universe (universe '()))
 (define current-world (make-parameter #f))
 (define current-events (make-parameter (make-hasheq)))
+(define start-time (make-parameter (current-seconds)))
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
@@ -131,7 +127,8 @@
     [(_ (~seq #:systems system-name:id ...)
         (~seq #:initialize init-expr:expr ...)
         (~seq #:stop-when stop-expr:expr ...))
-     #'(parameterize ([current-world (world (gensym) (make-hasheq) (unweighted-graph/directed '()))])
+     #'(parameterize ([current-world (world (gensym) (make-hasheq) (unweighted-graph/directed '()))]
+                      [start-time (current-seconds)])
          (begin
            init-expr ...
            (define systems (list system-name ...))
@@ -215,9 +212,9 @@
 ;; clock event
 
 ;; just an epoch for now
-(define clock/e (event:source 'clock/e #f #f (λ () (current-seconds))))
+(define clock/e (event:source 'clock/e #f #f (λ () (- (current-seconds) (start-time)))))
 ;; record value in the hash table as a lambda
-(hash-set! (current-events) 'clock/e (λ () (current-seconds)))
+(hash-set! (current-events) 'clock/e (λ () (- (current-seconds) (start-time))))
 
 ;;; define-system syntax and identifier bindings
 
@@ -318,7 +315,7 @@
         (~optional (~seq #:state [given-state-name:id initial-state:expr]))
         (~optional (~seq #:pre given-pre-name:id pre-body:expr ...))
         (~optional (~seq #:enabled? enabled?-body:expr ...))
-        (~optional (~seq #:query entity-name:id query:expr #;query:static-query))
+        (~optional (~seq #:query given-entity-name:id query:expr #;query:static-query))
         (~optional (~seq #:map given-maps-name:id map-body:expr ...))
         (~optional (~seq #:reduce given-reduce-name:id reduce-body:expr ...))
         (~optional (~seq #:post post-body:expr ...))
@@ -327,6 +324,7 @@
      #:with pre-name #'(~? given-pre-name default-pre-name)
      #:with maps-name #'(~? given-maps-name default-maps-name)
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
+     #:with entity-name #'(~? given-entity-name default-entity-name)
      #'(begin   
          (define system-name (create-system 'system-name))
          (set-system-in! system-name (list evt ...))
@@ -338,10 +336,9 @@
                  [pre-body-fun (λ (state-name evts)
                                  (match-define (list evt-name ...) evts)
                                  (~? (begin pre-body ...) (void)))]
-                 [enabled-body-fun (λ (state-name pre-name)
+                 [enabled-body-fun (λ (state-name pre-name evts)
+                                     (match-define (list evt-name ...) evts)
                                      (~? (and enabled?-body ...) (void)))]
-                 [map-body-fun (λ (state-name pre-name)
-                                 (~? (begin map-body ...) (void)))]
                  [reduce-body-fun (λ (state-name pre-name maps-name)
                                     (~? (begin reduce-body ...) (void)))]
                  [post-body-fun (λ (state-name pre-name reduce-name)
@@ -352,18 +349,21 @@
                  [state-0 (if prior-state prior-state (~? initial-state #f)) ]
                  [state-name state-0]
                  [get-event-vals (λ (e) (hash-ref (current-events) (event-name e)))]
-                 [pre-val-0 (pre-body-fun state-name (map get-event-vals (list evt ...)))]
+                 [event-vals (map get-event-vals (list evt ...))]
+                 [pre-val-0 (pre-body-fun state-name event-vals)]
                  [pre-name pre-val-0]
                  [state-name pre-name]
                  [input-events (let-values ([(evt-name ...) (values evt ...)])
                                  (list evt-name ...))]
-                 [enabled (enabled-body-fun state-name pre-name)]
+                 [enabled (enabled-body-fun state-name pre-name event-vals)]
                  [entities
                   (if enabled (~? query (list)) (list))]
+                 [map-body-fun (λ (state-name pre-name entity-name)
+                                 (~? (map (λ (entity-name) map-body ...) entities) (void)))]
                  [maps-val
                   (if
                    enabled
-                   (map-body-fun state-name pre-name)
+                   (map-body-fun state-name pre-name entities)
                    (list))]
                  [maps-name maps-val]
                  [reduce-val (reduce-body-fun state-name pre-name maps-name)]
@@ -371,9 +371,7 @@
                  [post (post-body-fun state-name pre-name reduce-name)]
                  [output-events (output-events-fun state-name pre-name reduce-name)])
               (begin
-                #;(map map-name entities)
                 #;(foldl reduce-name zero entities)
-                
                 (set-system-state! system-name state-name)
                 (set-system-enabled! system-name enabled)))))
          system-name)]))
@@ -383,9 +381,15 @@
 (define (all-defined-systems)
   'all-defined-systems)
 
-(define (query archetype)
-  ;; TODO: implement
-  (list 1 2 3))
+(define (lookup archetype . rest)
+  (define entities (world-entities (current-world)))
+  (define (archetype-match? ent)
+    (equal?
+     (list->set (map component-id (cons archetype rest)))
+     (list->set (map car (hash->list (entity-components ent))))))
+  (define matches (filter archetype-match? (map cdr (hash->list entities))))
+  #;(displayln matches)
+  matches)
 
 (define (add-to-graph system-name input-events output-events recess-graph)
   (begin
