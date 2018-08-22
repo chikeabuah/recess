@@ -81,13 +81,13 @@
   ;; if the entity has just one component then it is unambiguous
   ;; if it has more than one component then we need a reference to 
   ;; the component to set it
-  (let* ([cmpnts-hash (entity-components e)]
-         [keys (hash-keys cmpnts-hash)]
-         [cmpnts-length (length keys)])
-    (cond 
-      [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
-      [ref (hash-set! cmpnts-hash ref expr)]
-      [else (raise "attempt to set entity was too ambiguous")])))
+  (define cmpnts-hash (entity-components e))
+  (define keys (hash-keys cmpnts-hash))
+  (define cmpnts-length (length keys))
+  (cond 
+    [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
+    [ref (hash-set! cmpnts-hash ref expr)]
+    [else (raise "attempt to set entity was too ambiguous")]))
 
 (define (add-entity-to-world! e wrld)
   (let ([current-entities (world-entities wrld)])
@@ -111,8 +111,6 @@
 
 ;; worlds
 
-(define recess-graph (unweighted-graph/directed '()))
-
 ;; entities are a make-hasheq
 (struct world (name entities dependency-graph) #:mutable)
 
@@ -124,8 +122,7 @@
 (struct universe (worlds) #:mutable)
 (define recess-universe (universe '()))
 (define current-world (make-parameter #f))
-(define current-events (make-parameter #f))
-
+(define current-events (make-parameter (make-hasheq)))
 
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
@@ -134,17 +131,26 @@
     [(_ (~seq #:systems system-name:id ...)
         (~seq #:initialize init-expr:expr ...)
         (~seq #:stop-when stop-expr:expr ...))
-     #'(parameterize ([current-world (world (gensym) (make-hasheq) recess-graph)])
+     #'(parameterize ([current-world (world (gensym) (make-hasheq) (unweighted-graph/directed '()))])
          (begin
            init-expr ...
+           (define systems (list system-name ...))
+           (for-each
+            (λ (sys)
+              (displayln (system-in sys))
+              (add-to-graph sys (system-in sys) (list) (world-dependency-graph (current-world))))
+            systems)          
            (let loop ()
-             (displayln "executing recess graph...")
-             (step-world)
+             ;; poll events
+             (parameterize ([current-events (poll-events (current-events))])
+               (displayln "executing recess graph...")
+               (step-world))
              (when (systems-enabled? (list stop-expr ...)) (loop)))))]))
 
 ;; do a single iteration of a world
-(define (step-world) 
-  (for-each (lambda (arg)
+(define (step-world)
+  (define tsorted-world (tsort (world-dependency-graph (current-world))))
+  (for-each (λ (arg)
               (cond
                 [(event? arg)
                  (display "this is an event:")
@@ -157,7 +163,18 @@
                  (displayln "executing system:")
                  ((system-body arg) arg)]
                 [else (display "unknown") (displayln arg)]))
-            (tsort (world-dependency-graph (current-world)))))
+            tsorted-world))
+
+;; the idea here is to poll the events by examing the hash values
+;; if the hash value is a thunk we invoke it and replace the
+;; thunk with its result
+(define (poll-events evnts)
+  (->  hash-eq? hash-eq?)
+  (define (poll event-pair)
+    (if (procedure? (cdr event-pair))
+        (cons (car event-pair) ((cdr event-pair)))
+        event-pair))
+  (make-hasheq (map poll (hash->list evnts))))
 
 (define (systems-enabled? systems)
   (let ([enabled? (λ (sys) (system-enabled sys))])
@@ -168,8 +185,6 @@
 ;; event ideas:
 ;; requiring a system as an implicit event = requiring all of that system's output events
 ;; in addition to an implicit event matching the system's name
-
-(define evts (make-hasheq))
 
 (define-generics event-generic)
 
@@ -182,7 +197,7 @@
   (event id zero plus))
 
 (define (set-event! key value)
-  (hash-set! evts key value))
+  (hash-set! (current-events) key value))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
@@ -190,7 +205,7 @@
      #'(begin
          ;; check first
          (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
-         (hash-set! evts name (~? value #f))
+         (hash-set! (current-events) name (~? value #f))
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
@@ -202,7 +217,7 @@
 ;; just an epoch for now
 (define clock/e (event:source 'clock/e #f #f (λ () (current-seconds))))
 ;; record value in the hash table as a lambda
-(hash-set! evts 'clock/e (λ () (current-seconds)))
+(hash-set! (current-events) 'clock/e (λ () (current-seconds)))
 
 ;;; define-system syntax and identifier bindings
 
@@ -280,16 +295,16 @@
 
 (define (create-system
          name
-         [body (λ (x) #f)]
-         [in (λ (x) #f)]
+         [body #f]
+         [in #f]
          [state #f]
-         [pre (λ (x) #f)]
-         [enabled (λ (x) #f)]
-         [query (λ (x) #f)]
-         [map (λ (x) #f)]
-         [reduce (λ (x) #f)]
-         [post (λ (x) #f)]
-         [out (λ (x) #f)])
+         [pre #f]
+         [enabled #f]
+         [query #f]
+         [map  #f]
+         [reduce #f]
+         [post  #f]
+         [out #f])
   (system name body in state pre enabled query map reduce post out))
 
 ;; register a system in the graph and have it print out the graph's
@@ -299,7 +314,7 @@
 (define-syntax (define-system stx)
   (syntax-parse stx
     [(_ system-name:id
-        (~seq #:in [in-evt-name:id in-evt-body:expr]) ...
+        (~seq #:in [evt-name:id evt:expr]) ...
         (~optional (~seq #:state [given-state-name:id initial-state:expr]))
         (~optional (~seq #:pre given-pre-name:id pre-body:expr ...))
         (~optional (~seq #:enabled? enabled?-body:expr ...))
@@ -314,18 +329,15 @@
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
      #'(begin   
          (define system-name (create-system 'system-name))
+         (set-system-in! system-name (list evt ...))
          (set-system-body!
           system-name
           (λ (sys)
             (let*
                 ([prior-state (system-state sys)]
-                 [pre-body-fun (λ (state-name events)
-                                 #;(match-define (list evt-name ...) (hash->list events))
+                 [pre-body-fun (λ (state-name evts)
+                                 (match-define (list evt-name ...) evts)
                                  (~? (begin pre-body ...) (void)))]
-                 [input-events-fun (λ (pre-name)
-                                     (let ([input-events
-                                            (list (create-event 'in-evt-name in-evt-body) ... )])
-                                       input-events))]
                  [enabled-body-fun (λ (state-name pre-name)
                                      (~? (and enabled?-body ...) (void)))]
                  [map-body-fun (λ (state-name pre-name)
@@ -339,10 +351,12 @@
                     (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
                  [state-0 (if prior-state prior-state (~? initial-state #f)) ]
                  [state-name state-0]
-                 [pre-val-0 (pre-body-fun state-name evts)]
+                 [get-event-vals (λ (e) (hash-ref (current-events) (event-name e)))]
+                 [pre-val-0 (pre-body-fun state-name (map get-event-vals (list evt ...)))]
                  [pre-name pre-val-0]
                  [state-name pre-name]
-                 [input-events (input-events-fun pre-name)]
+                 [input-events (let-values ([(evt-name ...) (values evt ...)])
+                                 (list evt-name ...))]
                  [enabled (enabled-body-fun state-name pre-name)]
                  [entities
                   (if enabled (~? query (list)) (list))]
@@ -359,11 +373,9 @@
               (begin
                 #;(map map-name entities)
                 #;(foldl reduce-name zero entities)
-                (set-system-in! system-name input-events)
+                
                 (set-system-state! system-name state-name)
                 (set-system-enabled! system-name enabled)))))
-         ((system-body system-name) system-name)
-         (add-to-graph system-name (system-in system-name) (list))
          system-name)]))
 
 ;; helper methods
@@ -375,7 +387,7 @@
   ;; TODO: implement
   (list 1 2 3))
 
-(define (add-to-graph system-name input-events output-events)
+(define (add-to-graph system-name input-events output-events recess-graph)
   (begin
     (add-vertex! recess-graph system-name)
     (for-each
