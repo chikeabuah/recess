@@ -9,15 +9,14 @@
 (define-system sync-to-clock
   ;; every second
   #:in [seconds clock/e]
+  #:pre x (sleep 3) (displayln seconds)
   ;; this system is enabled as long as the clock's value is less
   ;; than 15 seconds
-  #:pre x (sleep 3) (displayln seconds)
   #:enabled? (< seconds 15)
   ;; query for all entities that have the component/archetype: Count
   ;; we know there will only be one
   #:query e (lookup Count)
-  ;; every iteration increment e by 1 and print it
-  
+  ;; every iteration increment e by 1 and print it 
   #:map _ (set! e (+ (get e 'Count) 1)) (displayln (get e 'Count)))
 
 (module+ main
