@@ -12,15 +12,13 @@
 ;; the sequence is enforced by the dependency of multiply5 on subtract5
 ;; also they will not always be in sync because their termination conditions are different
 (define-system subtract5
-  ;; every second
   #:in [seconds clock/e]
   #:query e (Count)
   #:enabled? (< seconds 10)
   ;; every iteration increment subtract 5 from e
   #:post (set! e (- e 5)))
 
-  (define-system multiply5
-  ;; every second
+(define-system multiply5
   #:in [seconds clock/e]
   #:in [on-subtract subtract5]
   #:query e (Count)
