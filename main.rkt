@@ -2,7 +2,7 @@
 
 (require
   (for-syntax syntax/parse racket/base racket/syntax racket/match)
-  graph racket/syntax racket/match racket/generic racket/contract)
+  graph racket/syntax racket/match racket/generic racket/contract racket/list)
 
 (require (except-in racket set!)
          (rename-in racket [set! former-set!]))
@@ -13,7 +13,7 @@
 
 (provide
  (all-defined-out)
- (all-from-out racket/base racket/syntax racket/match graph))
+ (all-from-out racket/base racket/syntax racket/match racket/list graph))
 
 ;; A component is an identifier
 ;; and optionally some other data
@@ -47,7 +47,7 @@
 
 ;; accepts a list of components
 (define/contract (make-entity! cmpnts)
-  (->  (listof component?) void?)
+  (->  (listof component?) entity?)
   (let* ([e (create-entity (gensym))]
          [hash (make-hasheq)]
          [_ (for/list
@@ -65,7 +65,8 @@
                    #t)))]
          [_ (set-entity-components! e hash)])
     ;; add e to world
-    (when (current-world) (add-entity-to-world! e (current-world)))))
+    (when (current-world) (add-entity-to-world! e (current-world)))
+    e))
 
 (define (create-entity id [cmpnts (λ (x) #t)])  
   (entity id cmpnts))
@@ -134,7 +135,6 @@
            (define systems (list system-name ...))
            (for-each
             (λ (sys)
-              (displayln (system-in sys))
               (add-to-graph sys (system-in sys) (list) (world-dependency-graph (current-world))))
             systems)          
            (let loop ()
@@ -317,14 +317,14 @@
         (~optional (~seq #:enabled? enabled?-body:expr ...))
         (~optional (~seq #:query given-entity-name:id query:expr #;query:static-query))
         (~optional (~seq #:map given-maps-name:id map-body:expr ...))
-        (~optional (~seq #:reduce given-reduce-name:id reduce-body:expr ...))
+        (~optional (~seq #:reduce given-reduce-name:id zero-expr:expr reduce-body:expr ...))
         (~optional (~seq #:post post-body:expr ...))
         (~seq #:out [out-evt:expr evt-val-body:expr ...]) ...)
      #:with state-name #'(~? given-state-name default-state-name)
      #:with pre-name #'(~? given-pre-name default-pre-name)
      #:with maps-name #'(~? given-maps-name default-maps-name)
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
-     #:with entity-name #'(~? given-entity-name default-entity-name)
+     #:with entities-name #'(~? given-entity-name default-entity-name)
      #'(begin   
          (define system-name (create-system 'system-name))
          (set-system-in! system-name (list evt ...))
@@ -338,9 +338,7 @@
                                  (~? (begin pre-body ...) (void)))]
                  [enabled-body-fun (λ (state-name pre-name evts)
                                      (match-define (list evt-name ...) evts)
-                                     (~? (and enabled?-body ...) (void)))]
-                 [reduce-body-fun (λ (state-name pre-name maps-name)
-                                    (~? (begin reduce-body ...) (void)))]
+                                     (~? (and enabled?-body ...) (void)))]         
                  [post-body-fun (λ (state-name pre-name reduce-name)
                                   (~? (begin post-body ...) (void)))]
                  [output-events-fun
@@ -352,14 +350,16 @@
                  [event-vals (map get-event-vals (list evt ...))]
                  [pre-val-0 (pre-body-fun state-name event-vals)]
                  [pre-name pre-val-0]
-                 [state-name pre-name]
+                 [state-name (if (not (void? pre-name)) pre-name state-name)]
                  [input-events (let-values ([(evt-name ...) (values evt ...)])
                                  (list evt-name ...))]
                  [enabled (enabled-body-fun state-name pre-name event-vals)]
                  [entities
                   (if enabled (~? query (list)) (list))]
-                 [map-body-fun (λ (state-name pre-name entity-name)
-                                 (~? (map (λ (entity-name) map-body ...) entities) (void)))]
+                 [map-body-fun (λ (state-name pre-name entities-name)
+                                 (~? (map (λ (entities-name) map-body ...) entities) (void)))]
+                 [reduce-body-fun (λ (state-name pre-name maps-name)
+                                    (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))]
                  [maps-val
                   (if
                    enabled
@@ -369,9 +369,9 @@
                  [reduce-val (reduce-body-fun state-name pre-name maps-name)]
                  [reduce-name reduce-val]
                  [post (post-body-fun state-name pre-name reduce-name)]
+                 [state-name (if (not (void? post)) post state-name)]
                  [output-events (output-events-fun state-name pre-name reduce-name)])
               (begin
-                #;(foldl reduce-name zero entities)
                 (set-system-state! system-name state-name)
                 (set-system-enabled! system-name enabled)))))
          system-name)]))
