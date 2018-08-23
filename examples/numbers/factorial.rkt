@@ -17,10 +17,12 @@
   ;; bind the entities to the list ents
   #:query ents (lookup Count)
   ;; compute factorial
-  #:reduce fac (entity (gensym) (make-hasheq (list (cons 'Count 1)))) (λ (a b) (* (get a 'Count) (get b 'Count)))
+  #:reduce fac
+           (entity (gensym) (make-hasheq (list (cons 'Count 1))))
+           (λ (a b) (entity (gensym) (make-hasheq (list (cons 'Count (* (get a 'Count) (get b 'Count)))))))
   ;; every iteration create a new entity 1 greater than the last
   ;; and print the current factorial
-  #:post #;(display fac) (sleep 1) (set! (add-entity! (list Count)) x) (+ x 1))
+  #:post (displayln (get fac 'Count)) (sleep 1) (set! (add-entity! (list Count)) x) (+ x 1))
 
 (module+ main
  (begin-recess

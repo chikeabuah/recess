@@ -103,7 +103,6 @@
 (define add-entity! make-entity!)
 
 (define (get ent ref)
-  (display "ent?")(displayln ent)
   (hash-ref (entity-components ent) ref))
 
 ;; worlds
@@ -136,13 +135,12 @@
            (define systems (list system-name ...))
            (for-each
             (λ (sys)
-              (displayln (system-in sys))
               (add-to-graph sys (system-in sys) (list) (world-dependency-graph (current-world))))
             systems)          
            (let loop ()
              ;; poll events
              (parameterize ([current-events (poll-events (current-events))])
-               #;(displayln "executing recess graph...")
+               (displayln "executing recess graph...")
                (step-world))
              (when (systems-enabled? (list stop-expr ...)) (loop)))))]))
 
@@ -152,12 +150,12 @@
   (for-each (λ (arg)
               (cond
                 [(event? arg)
-                 #;(display "this is an event:")
-                 #;(display arg)
+                 (display "this is an event:")
+                 (display arg)
                  (displayln (event-name arg))]
                 [(system? arg)
-                 #;(display "this is a system:")
-                 #;(display arg)
+                 (display "this is a system:")
+                 (display arg)
                  (displayln (system-id arg))
                  (displayln "executing system:")
                  ((system-body arg) arg)]
@@ -361,7 +359,6 @@
                  [map-body-fun (λ (state-name pre-name entities-name)
                                  (~? (map (λ (entities-name) map-body ...) entities) (void)))]
                  [reduce-body-fun (λ (state-name pre-name maps-name)
-                                    (displayln entities)
                                     (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))]
                  [maps-val
                   (if
