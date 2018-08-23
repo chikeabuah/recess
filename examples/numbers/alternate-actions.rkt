@@ -1,13 +1,8 @@
 #lang racket/base
 
 (require recess)
-
-(struct counter (x)
-  #:methods gen:component-prototype-generic
-  [(define (init-component component-prototype-generic)
-     (counter 0))])
      
-(define-component Count counter) 
+(define-component Count 0) 
 
 ;; the idea in this example is to create a numeric pattern
 ;; using a single entity
@@ -36,6 +31,6 @@
 (module+ main
  (begin-recess
   #:systems subtract5 multiply5
-  #:initialize (add-entity! (Count)) (set-event! clock/e 0)
+  #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
   #:stop-when multiply5))
   
