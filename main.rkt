@@ -334,13 +334,14 @@
      #'(begin   
          (define system-name (create-system 'system-name))
          (set-system-in! system-name (list evt ...))
+         (hash-set! (current-events) 'system-name  #f)
          (set-system-body!
           system-name
           (λ (sys)
             (let*
                 ([prior-state (system-state sys)]
                  [pre-body-fun (λ (state-name evts)
-                                 (display evts)
+                                 (display "evts")(display evts)
                                  (match-define (list evt-name ...) evts)
                                  (~? (begin pre-body ...) (void)))]
                  [enabled-body-fun (λ (state-name pre-name evts)
@@ -354,7 +355,7 @@
                  [state-0 (if prior-state prior-state (~? initial-state #f))]
                  [state-name state-0]
                  [get-event-vals (λ (ev) (hash-ref (current-events) (event-generic-name ev)))]
-                 [event-vals (map get-event-vals (filter event? (list evt ...)))]
+                 [event-vals (map get-event-vals (filter event-generic? (list evt ...)))]
                  [pre-val-0 (pre-body-fun state-name event-vals)]
                  [pre-name pre-val-0]
                  [state-name (if (not (void? pre-name)) pre-name state-name)]

@@ -23,7 +23,7 @@
   #:in [seconds clock/e]
   ;; we can enforce dependencies through in
   ;; we can use the in to force multiply5 to always happen after subtractt5
-  ;#:in [on-subtract subtract5]
+  #:in [on-subtract subtract5]
   #:enabled? (< seconds 15)
   #:query e (lookup Count)
   ;; every iteration multiply e by 5
