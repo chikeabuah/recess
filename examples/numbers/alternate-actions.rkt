@@ -2,7 +2,7 @@
 
 (require recess)
      
-(define-component Count 0) 
+(define-component Count 10) 
 
 ;; the idea in this example is to create a numeric pattern
 ;; using a single entity
@@ -13,22 +13,25 @@
 ;; also they will not always be in sync because their termination conditions are different
 (define-system subtract5
   #:in [seconds clock/e]
-  #:query e (Count)
+  #:pre y (sleep 3)
   #:enabled? (< seconds 10)
+  #:query e (lookup Count)
   ;; every iteration increment subtract 5 from e
-  #:post (set! e (- e 5)))
+  #:map _ (displayln (get e 'Count)) (set! e (- (get e 'Count) 5)))
 
 (define-system multiply5
   #:in [seconds clock/e]
-  #:in [on-subtract subtract5]
-  #:query e (Count)
+  ;; we can enforce dependencies through in
+  ;; we can use the in to force multiply5 to always happen after subtractt5
+  ;#:in [on-subtract subtract5]
   #:enabled? (< seconds 15)
+  #:query e (lookup Count)
   ;; every iteration multiply e by 5
-  #:post (set! e (* e 5)))
+  #:map _ (displayln (get e 'Count)) (set! e (* (get e 'Count) 5)))
 
 (module+ main
  (begin-recess
   #:systems subtract5 multiply5
-  #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
+  #:initialize (add-entity! (list Count)) (set-event! clock/e 1)
   #:stop-when multiply5))
   

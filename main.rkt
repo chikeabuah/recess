@@ -183,15 +183,19 @@
 ;; requiring a system as an implicit event = requiring all of that system's output events
 ;; in addition to an implicit event matching the system's name
 
-(define-generics event-generic)
+(define-generics event-generic
+  [event-generic-name event-generic])
 
-(struct event (name zero plus) #:methods gen:event-generic [])
+(struct event (name zero plus)
+  #:methods gen:event-generic
+  [(define (event-generic-name event-generic)
+     (event-name event-generic))])
 (struct event:source event (input))
 (struct event:sink event (output))
 (struct event:transform event (f))
 
-(define (create-event id [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
-  (event id zero plus))
+(define (create-event name [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
+  (event name zero plus))
 
 (define (set-event! key value)
   (hash-set! (current-events) key value))
@@ -287,7 +291,9 @@
 (struct system
   (id body in state pre enabled query map reduce post out)
   #:methods gen:system-generic []
-  #:methods gen:event-generic []
+  #:methods gen:event-generic
+  [(define (event-generic-name event-generic)
+     (system-id event-generic))]
   #:mutable)
 
 (define (create-system
@@ -334,6 +340,7 @@
             (let*
                 ([prior-state (system-state sys)]
                  [pre-body-fun (λ (state-name evts)
+                                 (display evts)
                                  (match-define (list evt-name ...) evts)
                                  (~? (begin pre-body ...) (void)))]
                  [enabled-body-fun (λ (state-name pre-name evts)
@@ -344,10 +351,10 @@
                  [output-events-fun
                   (λ (state-name pre-name reduce-name)
                     (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
-                 [state-0 (if prior-state prior-state (~? initial-state #f)) ]
+                 [state-0 (if prior-state prior-state (~? initial-state #f))]
                  [state-name state-0]
-                 [get-event-vals (λ (e) (hash-ref (current-events) (event-name e)))]
-                 [event-vals (map get-event-vals (list evt ...))]
+                 [get-event-vals (λ (ev) (hash-ref (current-events) (event-generic-name ev)))]
+                 [event-vals (map get-event-vals (filter event? (list evt ...)))]
                  [pre-val-0 (pre-body-fun state-name event-vals)]
                  [pre-name pre-val-0]
                  [state-name (if (not (void? pre-name)) pre-name state-name)]
@@ -390,6 +397,7 @@
   (define matches (filter archetype-match? (map cdr (hash->list entities))))
   #;(displayln matches)
   matches)
+
 
 (define (add-to-graph system-name input-events output-events recess-graph)
   (begin
