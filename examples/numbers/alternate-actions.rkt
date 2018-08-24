@@ -13,7 +13,7 @@
 ;; also they will not always be in sync because their termination conditions are different
 (define-system subtract5
   #:in [seconds clock/e]
-  #:pre y (sleep 3)
+  #:pre y (sleep 1)
   #:enabled? (< seconds 10)
   #:query e (lookup Count)
   ;; every iteration increment subtract 5 from e
