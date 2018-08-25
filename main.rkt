@@ -1,12 +1,22 @@
 #lang racket/base
 
 (require
-  (for-syntax syntax/parse racket/base racket/syntax racket/match)
-  graph racket/syntax racket/match racket/generic racket/contract racket/list)
+  (for-syntax
+   syntax/parse
+   racket/base
+   racket/syntax
+   racket/match)
+  graph
+  racket/syntax
+  racket/match
+  racket/generic
+  racket/contract
+  racket/list)
 
 (require (except-in racket set!)
          (rename-in racket [set! former-set!]))
 
+;; can we replace this with a make-set!-transformer?
 (define (set! id expr [ref (λ (x) #f)])
   (cond [(entity? id) (set-entity! id expr ref)]
         [else (former-set! id expr)]))
@@ -17,23 +27,25 @@
 
 ;; A component is an identifier
 ;; and optionally some other data
-
+;; currently still experimenting with the idea of having the other data be
+;; some sort of prototype or class hence the name
 (struct component (id proto))
 
 (define-syntax (define-component stx)
   (syntax-parse stx
-    [(_ name [~optional given-generic])
-     (with-syntax ([gen:name (format-id #'name "gen:~a" (syntax-e #'name))])
+    [(_ name [~optional given-proto])
+     (with-syntax ([proto:name (format-id #'name "proto:~a" (syntax-e #'name))])
        #'(begin
            ;; this is so we can search for a component type with
            ;; something like: Shape?, Timer?, etc
            (define-generics name)
-           (struct component:generic component () #:methods gen:name [])
-           (define (create-component id [generic (λ (x) #f)])  
-             (component:generic id generic))
-           (define name (create-component 'name (~? given-generic #f)))))]))
+           (struct component:proto component () #:methods gen:name [])
+           (define (create-component id [proto #f])  
+             (component:proto id proto))
+           (define name (create-component 'name (~? given-proto #f)))))]))
 
 ;; list of components
+;; does this need to be anything else?
 (define-syntax (define-archetype stx)
   (syntax-parse stx
     [(_ name components ...)
@@ -41,7 +53,6 @@
          (list components ...))]))
 
 ;; entities
-
 ;; cmpnts is a (make-hasheq)
 (struct entity (id components) #:mutable)
 
@@ -55,14 +66,9 @@
               ;; check if it's a component with data or not
               (if (component-proto cmpnt)
                   ;; NOTE: this means components are unique in an entity
-                  (hash-set!
-                   hash
-                   (component-id cmpnt)
-                   (component-proto cmpnt))
-                  (hash-set!
-                   hash
-                   (component-id cmpnt)
-                   #t)))]
+                  ;; we might not want this in practice
+                  (hash-set! hash (component-id cmpnt) (component-proto cmpnt))
+                  (hash-set! hash (component-id cmpnt) #t)))]
          [_ (set-entity-components! e hash)])
     ;; add e to world
     (when (current-world) (add-entity-to-world! e (current-world)))
@@ -81,7 +87,7 @@
   (cond 
     [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
     [ref (hash-set! cmpnts-hash ref expr)]
-    [else (raise "attempt to set entity was too ambiguous")]))
+    [else (raise "attempt to set entity was ambiguous")]))
 
 (define (add-entity-to-world! e wrld)
   (let ([current-entities (world-entities wrld)])
@@ -102,25 +108,25 @@
 
 (define add-entity! make-entity!)
 
+;; get the value of a component described by ref
+;; from the entity ent
 (define (get ent ref)
   (hash-ref (entity-components ent) ref))
 
 ;; worlds
-
 ;; entities are a make-hasheq
 (struct world (name entities dependency-graph) #:mutable)
-
-;; assuming that most programs will use a single world
-;; we can support a single-world mode where things are
-;; automatically added to the default world
 
 ;; if we ever need to keep track of a list of worlds
 (struct universe (worlds) #:mutable)
 (define recess-universe (universe '()))
+
+;; we can use parameters for general world managament and bookkeeping
 (define current-world (make-parameter #f))
 (define current-events (make-parameter (make-hasheq)))
 (define start-time (make-parameter (current-seconds)))
 
+;; initialize, iterate, terminate at some point
 ;; create a topological ordering of the recess
 ;; graph and execute the nodes in that order
 (define-syntax (begin-recess stx)
@@ -131,12 +137,15 @@
      #'(parameterize ([current-world (world (gensym) (make-hasheq) (unweighted-graph/directed '()))]
                       [start-time (current-seconds)])
          (begin
+           ;; user's init expressions
            init-expr ...
+           ;; build up the dependency graph
            (define systems (list system-name ...))
            (for-each
             (λ (sys)
               (add-to-graph sys (system-in sys) (list) (world-dependency-graph (current-world))))
-            systems)          
+            systems)
+           ;; iterate through the graph until the world's termination conditions are fulfilled          
            (let loop ()
              ;; poll events
              (parameterize ([current-events (poll-events (current-events))])
@@ -144,7 +153,7 @@
                (step-world))
              (when (systems-enabled? (list stop-expr ...)) (loop)))))]))
 
-;; do a single iteration of a world
+;; do a single iteration of a world graph
 (define (step-world)
   (define tsorted-world (tsort (world-dependency-graph (current-world))))
   (for-each (λ (arg)
@@ -163,8 +172,7 @@
             tsorted-world))
 
 ;; the idea here is to poll the events by examing the hash values
-;; if the hash value is a thunk we invoke it and replace the
-;; thunk with its result
+;; if the hash value is a thunk we invoke it 
 (define (poll-events evnts)
   (->  hash-eq? hash-eq?)
   (define (poll event-pair)
@@ -173,16 +181,16 @@
         event-pair))
   (make-hasheq (map poll (hash->list evnts))))
 
+;; helper for determining world termination condition
 (define (systems-enabled? systems)
   (let ([enabled? (λ (sys) (system-enabled sys))])
     (andmap enabled? systems)))
 
 ;; An event is an identifier [also optionally a type predicate]
-
 ;; event ideas:
 ;; requiring a system as an implicit event = requiring all of that system's output events
 ;; in addition to an implicit event matching the system's name
-
+;; events and systems have event generics
 (define-generics event-generic
   [event-generic-name event-generic])
 
@@ -190,6 +198,7 @@
   #:methods gen:event-generic
   [(define (event-generic-name event-generic)
      (event-name event-generic))])
+
 (struct event:source event (input))
 (struct event:sink event (output))
 (struct event:transform event (f))
@@ -204,29 +213,28 @@
   (syntax-parse stx
     [(_ name (~optional value) (~optional zero) (~optional plus))
      #'(begin
-         ;; check first
+         ;; TODO: we might want to check if this is already defined first
+         ;; define event singleton
          (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
+         ;; record it and it's initial value in the events table
          (hash-set! (current-events) name (~? value #f))
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
-;;; the source events can take an input which is a lambda
-;;; we want to poll the sources to produce their value
+;;; the source events have an input which is represented as a thunk
+;;; we want to poll the thunks to produce their value
 
 ;; clock event
-
 ;; just an epoch for now
 (define clock/e (event:source 'clock/e #f #f (λ () (- (current-seconds) (start-time)))))
-;; record value in the hash table as a lambda
+;; record value in the hash table as a thunk
 (hash-set! (current-events) 'clock/e (λ () (- (current-seconds) (start-time))))
 
 ;;; define-system syntax and identifier bindings
 
 ;;; let's list these in the order they should be bound/evaluated
 ;;; top->bottom
-
-;; binds name as a system object
-;; binds name as an event object
+;; binds name as a system object and an event generic
 #;(define-system name:id
     ;; evt is evaluated once upon recess initialization [perhaps this
     ;; should be a special form of "event expression?" same with below.]
@@ -285,9 +293,9 @@
     (~seq #:out [evt:expr evt-val-body:expr ...]) ...)
 
 ;; system struct
-
 (define-generics system-generic)
 
+;; we can use this struct to persist system values between iterations
 (struct system
   (id body in state pre enabled query map reduce post out)
   #:methods gen:system-generic []
@@ -310,10 +318,6 @@
          [out #f])
   (system name body in state pre enabled query map reduce post out))
 
-;; register a system in the graph and have it print out the graph's
-;; structure on each call
-;; last graph printed is the full picture
-
 (define-syntax (define-system stx)
   (syntax-parse stx
     [(_ system-name:id
@@ -321,6 +325,7 @@
         (~optional (~seq #:state [given-state-name:id initial-state:expr]))
         (~optional (~seq #:pre given-pre-name:id pre-body:expr ...))
         (~optional (~seq #:enabled? enabled?-body:expr ...))
+        ;; TODO: implement this syntax class
         (~optional (~seq #:query given-entity-name:id query:expr #;query:static-query))
         (~optional (~seq #:map given-maps-name:id map-body:expr ...))
         (~optional (~seq #:reduce given-reduce-name:id zero-expr:expr reduce-body:expr ...))
@@ -341,7 +346,6 @@
             (let*
                 ([prior-state (system-state sys)]
                  [pre-body-fun (λ (state-name evts)
-                                 (display "evts")(display evts)
                                  (match-define (list evt-name ...) evts)
                                  (~? (begin pre-body ...) (void)))]
                  [enabled-body-fun (λ (state-name pre-name evts)
@@ -380,15 +384,21 @@
                  [state-name (if (not (void? post)) post state-name)]
                  [output-events (output-events-fun state-name pre-name reduce-name)])
               (begin
+                ;; persist the end of iteration state
                 (set-system-state! system-name state-name)
+                ;; this helps with checking the world termination condition
+                ;; between iterations
                 (set-system-enabled! system-name enabled)))))
          system-name)]))
 
 ;; helper methods
 
+;; stub for a way to add all the systems to a world
+;; without listing them all
 (define (all-defined-systems)
   'all-defined-systems)
 
+;; get all the entities in the current world that match this archetype
 (define (lookup archetype . rest)
   (define entities (world-entities (current-world)))
   (define (archetype-match? ent)
@@ -399,7 +409,7 @@
   #;(displayln matches)
   matches)
 
-
+;; add a system to the dependency graph in the current world
 (define (add-to-graph system-name input-events output-events recess-graph)
   (begin
     (add-vertex! recess-graph system-name)

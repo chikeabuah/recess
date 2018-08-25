@@ -7,7 +7,6 @@
 ;; the idea behind this system is to synchronize
 ;; a numeric entity with a time clock
 (define-system sync-to-clock
-  ;; every second
   #:in [seconds clock/e]
   #:pre x (sleep 3) (displayln seconds)
   ;; this system is enabled as long as the clock's value is less

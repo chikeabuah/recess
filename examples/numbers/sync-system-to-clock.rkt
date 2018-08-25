@@ -5,7 +5,6 @@
 ;; the idea behind this system is to synchronize
 ;; a system's internal state with a time clock
 (define-system sync-to-clock
-  ;; every second
   #:in [seconds clock/e]
   ;; there is a binding called x in our state
   ;; initially it has the value of 5
