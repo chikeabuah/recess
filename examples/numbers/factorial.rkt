@@ -17,6 +17,7 @@
   #:query ents (lookup Count)
   ;; compute factorial
   ;; TODO: this is too verbose, need to revisit
+  ;; this could be cleaned up with dot notation
   #:reduce fac
            ;; zero expr
            (entity (gensym) (make-hasheq (list (cons 'Count 1))))
