@@ -8,7 +8,7 @@
 ;; a numeric entity with a time clock
 (define-system sync-to-clock
   #:in [seconds clock/e]
-  #:pre x (sleep 3) (displayln seconds)
+  #:pre x (sleep 1) (displayln seconds)
   ;; this system is enabled as long as the clock's value is less
   ;; than 15 seconds
   #:enabled? (< seconds 15)

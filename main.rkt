@@ -34,7 +34,7 @@
 (define-syntax (define-component stx)
   (syntax-parse stx
     [(_ name [~optional given-proto])
-     (with-syntax ([proto:name (format-id #'name "proto:~a" (syntax-e #'name))])
+     (with-syntax ([gen:name (format-id #'name "gen:~a" (syntax-e #'name))])
        #'(begin
            ;; this is so we can search for a component type with
            ;; something like: Shape?, Timer?, etc

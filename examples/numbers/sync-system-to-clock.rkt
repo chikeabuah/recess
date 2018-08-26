@@ -10,7 +10,7 @@
   ;; initially it has the value of 5
   #:state [x 5]
   ;; every iteration increment x by 1
-  #:pre _ (displayln x) (sleep 3) (displayln seconds) (+ x 1)
+  #:pre _ (displayln x) (sleep 1) (displayln seconds) (+ x 1)
   ;; this system is enabled as long as x is less than 15
   #:enabled? (< x 15))
 
