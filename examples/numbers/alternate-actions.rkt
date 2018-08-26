@@ -4,8 +4,7 @@
      
 (define-component Count 10) 
 
-;; the idea in this example is to create a numeric pattern
-;; using a single entity
+;; the idea in this example is to create a numeric pattern using a single entity
 ;; the pattern is to alternatingly subtract 5 and multiply by 5 to get the next number
 ;; for example:
 ;; 10,–5 5,×5 25,–5 20,×5 100,–5 95,×5 475, ...
@@ -21,7 +20,7 @@
 
 (define-system multiply5
   #:in [seconds clock/e]
-  ;; we can enforce dependencies through in
+  ;; we can enforce dependencies through #:in
   ;; we can use the in to force multiply5 to always happen after subtractt5
   #:in [on-subtract subtract5]
   #:enabled? (< seconds 15)
@@ -32,6 +31,6 @@
 (module+ main
  (begin-recess
   #:systems subtract5 multiply5
-  #:initialize (add-entity! (list Count)) (set-event! clock/e 1)
+  #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
   #:stop-when multiply5))
   

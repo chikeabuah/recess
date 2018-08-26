@@ -4,7 +4,7 @@
      
 (define-component Count 0) 
 
-;; the idea behind this system is to create a pattern using a numeric entity
+;; the idea behind this system is to create a sequence pattern using a numeric entity
 ;; we add increasing even numbers to get the next number
 ;; for example: 
 ;; 0,+2 2,+4 6,+6 12,+8 20,+10 30,+12 42, …
