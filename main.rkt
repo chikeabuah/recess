@@ -398,12 +398,12 @@
             (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
             (define post (post-body-fun state-1 pre-val-0 reduce-val))
             (define state-2 (if (not (void? post)) post state-1))
-            (define (output-events-fun state-name pre-name reduce-name)
+            (define (output-events-fun state-name pre-name map-name reduce-name)
               (~?
                (begin
                  (hash-set! (current-events) out-evt (~? (begin evt-val-body ...) (void))) ...)
                (void))(void))
-            (define output-events (output-events-fun state-2 pre-val-0 reduce-val))
+            (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
             (begin
               ;; persist the end of iteration state
               (set-system-state! system-name state-2)

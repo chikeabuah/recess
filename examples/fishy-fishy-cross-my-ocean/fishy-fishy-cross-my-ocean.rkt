@@ -22,14 +22,7 @@
   #:pre y (sleep 1)
   #:enabled? (< seconds 10)
   #:query e (lookup Shark Fish)
-  #:map _ (displayln (get e 'Count)) (set! e (- (get e 'Count) 5)))
-
-(define-system gather-sharks
-  #:in [seconds clock/e]
-  #:in [on-cross cross-my-ocean]
-  #:enabled? (< seconds 15)
-  #:query e (lookup Shark)
-  #:map _ (displayln (get e 'Count)) (set! e (* (get e 'Count) 5)))
+  #:map _ (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess))
 
 (define-system shark-bite
   #:in [seconds clock/e]
@@ -50,5 +43,4 @@
     #:systems cross-my-ocean shark-bite seaweed-attack
     #:initialize (add-entity! (list Shark Guess) SHARKS)
     (add-entity! (list Fish Guess) FISH)
-    (set-event! clock/e 0)
     #:stop (because #:entities (eq? 0 (length (lookup Fish))))))
