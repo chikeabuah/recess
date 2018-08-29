@@ -19,17 +19,16 @@
   ;; TODO: this is too verbose, need to revisit
   ;; this could be cleaned up with dot notation
   #:reduce fac
-           ;; zero expr
-           (entity (gensym) (make-hasheq (list (cons 'Count 1))))
-           ;; reduce expr
-           (λ (a b) (entity (gensym) (make-hasheq (list (cons 'Count (* (get a 'Count) (get b 'Count)))))))
+  ;; zero expr
+  (entity (gensym) (make-hasheq (list (cons 'Count 1))))
+  ;; reduce expr
+  (λ (a b) (entity (gensym) (make-hasheq (list (cons 'Count (* (get a 'Count) (get b 'Count)))))))
   ;; every iteration create a new entity 1 greater than the last
   ;; and print the current factorial
   #:post (displayln (get fac 'Count)) (sleep 1) (set! (add-entity! (list Count)) x) (+ x 1))
 
 (module+ main
- (begin-recess
-  #:systems factorial
-  #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
-  #:stop-when factorial))
-  
+  (begin-recess
+    #:systems factorial
+    #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
+    #:stop (because #systems  factorial)))

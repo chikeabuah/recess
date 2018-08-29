@@ -32,5 +32,5 @@
  (begin-recess
   #:systems subtract5 multiply5
   #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
-  #:stop-when multiply5))
+  #:stop (because #systems multiply5)))
   

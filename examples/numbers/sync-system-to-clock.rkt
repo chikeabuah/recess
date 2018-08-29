@@ -18,5 +18,5 @@
  (begin-recess
   #:systems sync-to-clock
   #:initialize (set-event! clock/e 0)
-  #:stop-when sync-to-clock))
+  #:stop (because #systems sync-to-clock)))
   

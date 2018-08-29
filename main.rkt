@@ -133,7 +133,7 @@
   (syntax-parse stx
     [(_ (~seq #:systems system-name:id ...)
         (~seq #:initialize init-expr:expr ...)
-        (~seq #:stop-when stop-expr:expr ...))
+        (~seq #:stop stop-expr:expr ...))
      #'(parameterize ([current-world (world (gensym) (make-hasheq) (unweighted-graph/directed '()))]
                       [start-time (current-seconds)])
          (begin
@@ -181,10 +181,33 @@
         event-pair))
   (make-hasheq (map poll (hash->list evnts))))
 
-;; helper for determining world termination condition
-(define (systems-enabled? systems)
+(define-syntax (because stx)
+  (syntax-parse stx
+    [(_ (~optional (~seq #:systems system-name:id ...))
+        (~optional (~seq #:events event-expr:expr ...))
+        (~optional (~seq #:entities ent-expr:expr ...)))
+     #:with systems #'(~? (list system-name ...) (list))
+     #:with event-exprs #'(~? (list event-expr ...) (list))
+     #:with ent-exprs #'(~? (list ent-expr ...) (list))
+     #'(let ([syscond (systems-condition? systems)]
+             [evcond (events-condition? event-exprs)]
+             [entcond (entities-condition? ent-exprs)]) 
+         (and syscond evcond entcond))]))
+
+;; helpers for determining world termination conditions
+(define (systems-condition? systems)
   (let ([enabled? (λ (sys) (system-enabled sys))])
     (andmap enabled? systems)))
+
+(define (events-condition? events)
+  #t)
+
+;; this is essentially trying to verify some claims about the entity
+;; database; things like: is the number of player entities equal to 0?
+;; for now just evaluating the expression should work
+(define (entities-condition? ent-exprs)
+  (let ([true? (λ (ent-expr) ent-expr)])
+    (andmap true? ent-exprs)))
 
 ;; An event is an identifier [also optionally a type predicate]
 ;; event ideas:
@@ -215,9 +238,11 @@
      #'(begin
          ;; TODO: we might want to check if this is already defined first
          ;; define event singleton
-         (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
-         ;; record it and it's initial value in the events table
-         (hash-set! (current-events) name (~? value #f))
+         (when
+             (not (hash-ref (current-events) name))
+           (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
+           ;; record it and it's initial value in the events table
+           (hash-set! (current-events) name (~? value #f)))
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
@@ -338,7 +363,8 @@
      #:with entities-name #'(~? given-entity-name default-entity-name)
      #'(begin   
          (define system-name (create-system 'system-name))
-         (set-system-in! system-name (list evt ...))
+         (set-system-in! system-name (list (define-event evt) ...))
+         (set-system-out! system-name (list (define-event out-evt) ...))
          (hash-set! (current-events) 'system-name  #f)
          (set-system-body!
           system-name
@@ -353,9 +379,6 @@
                                      (~? (and enabled?-body ...) (void)))]         
                  [post-body-fun (λ (state-name pre-name reduce-name)
                                   (~? (begin post-body ...) (void)))]
-                 [output-events-fun
-                  (λ (state-name pre-name reduce-name)
-                    (create-event 'out-event (~? (begin evt-val-body ...) void) ...))]
                  [state-0 (if prior-state prior-state (~? initial-state #f))]
                  [state-name state-0]
                  [get-event-vals (λ (ev) (hash-ref (current-events) (event-generic-name ev)))]
@@ -382,6 +405,11 @@
                  [reduce-name reduce-val]
                  [post (post-body-fun state-name pre-name reduce-name)]
                  [state-name (if (not (void? post)) post state-name)]
+                 [output-events-fun
+                  (λ (state-name pre-name reduce-name)
+                    (~?
+                     (begin
+                       (hash-set! (current-events) out-evt (~? (begin evt-val-body ...) (void))) ...) (void)))]
                  [output-events (output-events-fun state-name pre-name reduce-name)])
               (begin
                 ;; persist the end of iteration state
