@@ -375,7 +375,7 @@
               (~? (begin pre-body ...) (void)))
             (define (enabled-body-fun state-name pre-name evts)
               (match-define (list evt-name ...) evts)
-              (~? (and enabled?-body ...) (void)))
+              (~? (and enabled?-body ...) #t))
             (define (post-body-fun state-name pre-name reduce-name)
               (~? (begin post-body ...) (void)))
             (define state-0 (if prior-state prior-state (~? initial-state #f)))

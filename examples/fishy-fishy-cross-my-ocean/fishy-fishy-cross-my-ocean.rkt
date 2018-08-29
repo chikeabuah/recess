@@ -22,11 +22,13 @@
   #:pre y (sleep 1)
   #:enabled? (< seconds 10)
   #:query e (lookup Shark Fish)
-  #:map _ (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess))
+  #:map mapval (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess)
+  #:out [sharks/e (filter Shark? mapval)])
 
 (define-system shark-bite
   #:in [seconds clock/e]
   #:in [on-cross cross-my-ocean]
+  #:in [sharks sharks/e]
   #:enabled? (< seconds 15)
   #:query e (lookup Fish)
   #:map _ (displayln (get e 'Count)) (set! e (* (get e 'Count) 5)))
