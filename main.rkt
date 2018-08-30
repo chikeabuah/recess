@@ -24,6 +24,7 @@
   (cond [(entity? id) (set-entity! id expr ref)]
         [else (former-set! id expr)]))
 
+;; this is an attempt to simplify modifying entities
 (define (+ ent . cmpnts)
   (cond [(entity? ent) (add-components-to-entity! ent cmpnts)]
         [else (apply former-plus (cons ent cmpnts))]))
@@ -87,10 +88,7 @@
     e))
 
 (define (add-entities! cmpnts n)
-  (define es (map add-entity! (make-list n cmpnts)))
-  ;(displayln "es")
-  ;(displayln es)
-  es)
+  (map add-entity! (make-list n cmpnts)))
 
 (define (create-entity id [cmpnts (λ (x) #t)])  
   (entity id cmpnts))
@@ -190,14 +188,9 @@
   (for-each (λ (arg)
               (cond
                 [(event? arg)
-                 (display "this is an event:")
-                 (display arg)
-                 (displayln (event-name arg))]
+                 (display "this is an event:")(display arg)(displayln (event-name arg))]
                 [(system? arg)
-                 (display "this is a system:")
-                 (display arg)
-                 (displayln (system-id arg))
-                 (displayln "executing system:")
+                 (display "executing ")(display arg)(displayln (system-id arg))
                  ((system-body arg) arg)]
                 [else (display "unknown") (displayln arg)]))
             tsorted-world))
