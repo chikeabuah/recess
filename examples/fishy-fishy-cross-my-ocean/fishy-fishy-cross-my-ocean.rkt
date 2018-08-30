@@ -9,40 +9,49 @@
 
 (define SHARKS 5)
 (define FISH 50)
-(define OCEAN 100)
+(define OCEAN 10)
 
+(define-component Player)
 (define-component Shark)
 (define-component Fish)
 (define-component Seaweed)
 (define-component Guess 0)
 
-;; 
+(define-event shark-guesses/e)
+
+;; writing this example made me think about wanting multiple queries in a system
+;; or some kind of compound queries
+
 (define-system cross-my-ocean
   #:in [seconds clock/e]
   #:pre y (sleep 1)
-  #:enabled? (< seconds 10)
-  #:query e (lookup Shark Fish)
-  #:map mapval (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess)
-  #:out [sharks/e (filter Shark? mapval)])
+  #:query e (lookup Player)
+  #:map mapval (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess) e
+  #:out [shark-guesses/e (map (λ (e) (get e 'Guess)) (filter Shark? mapval))])
 
 (define-system shark-bite
   #:in [seconds clock/e]
   #:in [on-cross cross-my-ocean]
-  #:in [sharks sharks/e]
-  #:enabled? (< seconds 15)
+  #:in [sharks shark-guesses/e]
   #:query e (lookup Fish)
-  #:map _ (displayln (get e 'Count)) (set! e (* (get e 'Count) 5)))
+  #:map _
+  (displayln e)
+  (displayln "sharks") (displayln sharks)
+  (when (member (get e 'Guess) sharks) (- (+ e Seaweed) Fish Player)))
 
+;; really these do the same thing except just in two different phases
 (define-system seaweed-attack
   #:in [seconds clock/e]
   #:in [on-bite shark-bite]
-  #:enabled? (< seconds 15)
-  #:query e (lookup Seaweed)
-  #:map _ (displayln (get e 'Count)) (set! e (* (get e 'Count) 5)))  
+  #:query e (lookup Fish)
+  #:map _
+  (displayln (get e 'Guess))
+  (when (member (get e 'Guess) (lookup Seaweed)) (- (+ e Seaweed) Fish Player))) 
 
 (module+ main
   (begin-recess
     #:systems cross-my-ocean shark-bite seaweed-attack
-    #:initialize (add-entity! (list Shark Guess) SHARKS)
-    (add-entity! (list Fish Guess) FISH)
+    #:initialize
+    (add-entities! (list Shark Player Guess) SHARKS)
+    (add-entities! (list Fish Player Guess) FISH)
     #:stop (because #:entities (eq? 0 (length (lookup Fish))))))
