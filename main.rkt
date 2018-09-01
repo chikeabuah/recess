@@ -84,9 +84,9 @@
   e)
 
 ;; check if it's a component with data or not
-(define get-cmpnt-val (λ (cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #t)))
+(define (get-cmpnt-val cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #t))
 
-(define make-cmpnt-id-val-pair (λ (cmpnt) (cons (component-id cmpnt) (get-cmpnt-val cmpnt))))
+(define (make-cmpnt-id-val-pair cmpnt) (cons (component-id cmpnt) (get-cmpnt-val cmpnt)))
 
 (define (add-entities! cmpnts n)
   (map add-entity! (make-list n cmpnts)))
@@ -194,7 +194,7 @@
 ;; simulation, records the output in the world struct
 (define (big-bang-step-world)
   (λ (w)
-    ;;sync up with new things that have happened
+    ;; sync up with new things that have happened
     ;; right now this means merging the pending events into the current events
     (define events-so-far
       (hash-set
