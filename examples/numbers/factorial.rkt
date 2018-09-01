@@ -30,5 +30,5 @@
 (module+ main
   (begin-recess
     #:systems factorial
-    #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
-    #:stop (because #:systems  factorial)))
+    #:initialize (add-entity! (list Count))
+    #:stop (because #:systems factorial)))

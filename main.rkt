@@ -7,9 +7,12 @@
    racket/syntax
    racket/match)
   graph
+  2htdp/universe
+  2htdp/image
   racket/syntax
   racket/match
   racket/generic
+  racket/hash
   racket/contract
   racket/list)
 
@@ -65,27 +68,25 @@
          (list components ...))]))
 
 ;; entities
-;; cmpnts is a (make-hasheq)
+;; cmpnts is a (make-immutable-hasheq)
 (struct entity (id components) #:mutable)
 
 ;; accepts a list of components
 (define/contract (add-entity! cmpnts)
   (->  (listof component?) entity?)
-  (let* ([e (create-entity (gensym))]
-         [hash (make-hasheq)]
-         [_ (for/list
-                ([cmpnt cmpnts])
-              ;; check if it's a component with data or not
-              (if (component-proto cmpnt)
-                  ;; NOTE: this means components are unique in an entity
-                  ;; we might not want this in practice
-                  (hash-set! hash (component-id cmpnt) (component-proto cmpnt))
-                  (hash-set! hash (component-id cmpnt) #t)))]
-         [_ (set-entity-components! e hash)])
-    ;; add e to world
-    (when (current-world) (add-entity-to-world! e (current-world)))
-    ;(display (world-entities (current-world)))
-    e))
+  (define e (create-entity (gensym)))
+  ;; NOTE: this means components are unique in an entity
+  ;; we might not want this in practice
+  (set-entity-components! e (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts)))
+  ;; add e to world
+  (when (current-world) (current-world (add-entity-to-world e (current-world))))
+  #;(displayln (world-entities (current-world)))
+  e)
+
+;; check if it's a component with data or not
+(define get-cmpnt-val (λ (cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #t)))
+
+(define make-cmpnt-id-val-pair (λ (cmpnt) (cons (component-id cmpnt) (get-cmpnt-val cmpnt))))
 
 (define (add-entities! cmpnts n)
   (map add-entity! (make-list n cmpnts)))
@@ -101,41 +102,32 @@
   (define keys (hash-keys cmpnts-hash))
   (define cmpnts-length (length keys))
   (cond 
-    [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
-    [ref (hash-set! cmpnts-hash ref expr)]
+    [(eq? cmpnts-length 1) (set-entity-components! e (hash-set cmpnts-hash (first keys) expr))]
+    [ref (set-entity-components! e (hash-set cmpnts-hash ref expr))]
     [else (raise "attempt to set entity was ambiguous")]))
 
-(define (add-entity-to-world! e wrld)
+(define (add-entity-to-world e wrld)
   (let ([current-entities (world-entities wrld)])
-    (hash-set! current-entities (entity-id e) e)))
+    (struct-copy world wrld [entities (hash-set current-entities (entity-id e) e)])))
 
 (define (remove-entity-from-world! e wrld)
   (let ([current-entities (world-entities wrld)])
-    (hash-remove! current-entities (entity-id e))))
+    (struct-copy world wrld [entities (hash-remove current-entities (entity-id e) e)])))
 
 (define (add-components-to-entity! e cmpnts)
-  (for/list
-      ([cmpnt cmpnts])
-    ;; we're doing this pattern in multiple places
-    (if (component-proto cmpnt)
-        (hash-set! (entity-components e) (component-id cmpnt) (component-proto cmpnt))
-        (hash-set! (entity-components e) (component-id cmpnt) #t)))
+  (set-entity-components!
+   e
+   (hash-union
+    (entity-components e)
+    (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts))
+    #:combine (λ (old new) new)))
   e)
 
 (define (remove-components-from-entity! e cmpnts)
   (for/list
       ([cmpnt cmpnts])
-    (hash-remove! (entity-components e) (component-id cmpnt)))
+    (set-entity-components! e (hash-remove (entity-components e) (component-id cmpnt))))
   e)
-
-(define (get-entities-with-archetype wrld atype)
-  1)
-
-(define (entity-has-archetype? ent atype)
-  2)
-
-(define (entity-contains-archetype? ent atype)
-  3)
 
 ;; get the value of a component described by ref
 ;; from the entity ent
@@ -143,7 +135,7 @@
   (hash-ref (entity-components ent) ref))
 
 ;; worlds
-;; entities are a make-hasheq
+;; entities are a make-immutable-hasheq
 (struct world (name entities dependency-graph) #:mutable)
 
 ;; if we ever need to keep track of a list of worlds
@@ -152,8 +144,11 @@
 
 ;; we can use parameters for general world managament and bookkeeping
 (define current-world (make-parameter #f))
-(define current-events (make-parameter (make-hasheq)))
+(define current-events (make-parameter (make-immutable-hasheq)))
 (define start-time (make-parameter (current-seconds)))
+
+;; adapt recess to use big bang
+(struct big-bang-recess-world (pending-events recess-state last-output) #:transparent)
 
 ;; initialize, iterate, terminate at some point
 ;; create a topological ordering of the recess
@@ -163,8 +158,9 @@
     [(_ (~seq #:systems system-name:id ...)
         (~seq #:initialize init-expr:expr ...)
         (~seq #:stop stop-expr:expr ...))
-     #'(parameterize ([current-world (world (gensym) (make-hasheq) (unweighted-graph/directed '()))]
-                      [start-time (current-seconds)])
+     #'(parameterize ([current-world (world (gensym) (make-immutable-hasheq) (unweighted-graph/directed '()))]
+                      [start-time (current-seconds)]
+                      [current-events (poll-events (current-events))])
          (begin
            ;; user's init expressions
            init-expr ...
@@ -174,13 +170,53 @@
             (λ (sys)
               (add-to-graph sys (system-in sys) (list) (world-dependency-graph (current-world))))
             systems)
-           ;; iterate through the graph until the world's termination conditions are fulfilled          
-           (let loop ()
-             ;; poll events
-             (parameterize ([current-events (poll-events (current-events))])
-               (displayln "executing recess graph...")
-               (step-world))
-             (when (and stop-expr ...) (loop)))))]))
+           ;; iterate through the graph until the world's termination conditions are fulfilled
+           (big-bang (big-bang-recess-world (make-immutable-hasheq) #f #f)
+             (on-tick (big-bang-step-world) 1)
+             (to-draw big-bang-draw-recess)
+             (on-key big-bang-recess-key)
+             (on-mouse big-bang-recess-mouse)
+             (stop-when (big-bang-stop-condition (λ () (and stop-expr ...)))))))]))
+
+
+;; `on-key` and `on-mouse` events record something inside a custom made world struct
+(define (big-bang-recess-key w key-event)
+  (define events-so-far (big-bang-recess-world-pending-events w))
+  (struct-copy big-bang-recess-world w
+               [pending-events (hash-set events-so-far 'key/e key-event)]))
+
+(define (big-bang-recess-mouse w x y mouse-event)
+  (define events-so-far (big-bang-recess-world-pending-events w))
+  (struct-copy big-bang-recess-world w
+               [pending-events (hash-set events-so-far 'mouse/e mouse-event)]))
+
+;; then `on-tick` takes those events, plus a freshly generated clock event and runs the
+;; simulation, records the output in the world struct
+(define (big-bang-step-world)
+  (λ (w)
+    ;;sync up with new things that have happened
+    ;; right now this means merging the pending events into the current events
+    (define events-so-far
+      (hash-set
+       (big-bang-recess-world-pending-events w)
+       'clock/e
+       (- (current-seconds) (start-time))))
+    (current-events (hash-union (current-events) events-so-far #:combine (λ (old new) new)))
+    ;;then step
+    (displayln "executing recess graph...")
+    (step-world)
+    ;; reset pending events and produce output
+    ;; need to reset sink events too
+    (struct-copy big-bang-recess-world w
+                 [pending-events (make-immutable-hasheq)]
+                 [last-output (list)])))
+
+;; then `on-draw` will just pulls out the recess sink output
+(define (big-bang-draw-recess w)
+  (text "Hello" 24 "olive"))
+
+(define (big-bang-stop-condition stop-func)
+  (λ (w) (stop-func)))
 
 ;; do a single iteration of a world graph
 (define (step-world)
@@ -203,7 +239,7 @@
     (if (procedure? (cdr event-pair))
         (cons (car event-pair) ((cdr event-pair)))
         event-pair))
-  (make-hasheq (map poll (hash->list evnts))))
+  (make-immutable-hasheq (map poll (hash->list evnts))))
 
 (define-syntax (because stx)
   (syntax-parse stx
@@ -215,13 +251,13 @@
      #:with ent-exprs #'(~? (list ent-expr ...) (list))
      #'(let ([syscond (systems-condition? systems)]
              [evcond (events-condition? event-exprs)]
-             [entcond (entities-condition? ent-exprs)]) 
+             [entcond (entities-condition? ent-exprs)])
          (and syscond evcond entcond))]))
 
 ;; helpers for determining world termination conditions
 (define (systems-condition? systems)
-  (let ([enabled? (λ (sys) (system-enabled sys))])
-    (andmap enabled? systems)))
+  (let ([disabled? (λ (sys) (not (system-enabled sys)))])
+    (andmap disabled? systems)))
 
 (define (events-condition? events)
   #t)
@@ -230,8 +266,8 @@
 ;; database; things like: is the number of player entities equal to 0?
 ;; for now just evaluating the expression should work
 (define (entities-condition? ent-exprs)
-  (let ([invert? (λ (ent-expr) (not ent-expr))])
-    (andmap invert? ent-exprs)))
+  (let ([true? (λ (ent-expr) ent-expr)])
+    (andmap true? ent-exprs)))
 
 ;; An event is an identifier [also optionally a type predicate]
 ;; event ideas:
@@ -253,8 +289,8 @@
 (define (create-event name [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
   (event name zero plus))
 
-(define (set-event! key value)
-  (hash-set! (current-events) key value))
+(define (set-event key value)
+  (hash-set (current-events) key value))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
@@ -262,18 +298,26 @@
      #'(begin
          (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
          ;; record it and it's initial value in the events table
-         (hash-set! (current-events) 'name (~? value #f))
+         (current-events (hash-set (current-events) 'name (~? value #f)))
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
-;;; the source events have an input which is represented as a thunk
-;;; we want to poll the thunks to produce their value
+
+;; image event
+(define image/e (event:source 'image/e #f #f #f))
+(current-events (hash-set (current-events) 'image/e #f))
 
 ;; clock event
-;; just an epoch for now
-(define clock/e (event:source 'clock/e #f #f (λ () (- (current-seconds) (start-time)))))
-;; record value in the hash table as a thunk
-(hash-set! (current-events) 'clock/e (λ () (- (current-seconds) (start-time))))
+(define clock/e (event:source 'clock/e #f #f #f))
+(current-events (hash-set (current-events) 'clock/e #f))
+
+;; key event
+(define key/e (event:source 'key/e #f #f #f))
+(current-events (hash-set (current-events) 'key/e #f))
+
+;; mouse event
+(define mouse/e (event:source 'mouse/e #f #f #f))
+(current-events (hash-set (current-events) 'mouse/e #f))
 
 ;;; define-system syntax and identifier bindings
 
@@ -355,7 +399,7 @@
          [in #f]
          [state #f]
          [pre #f]
-         [enabled #f]
+         [enabled #t]
          [query #f]
          [map  #f]
          [reduce #f]
@@ -385,7 +429,7 @@
          (define system-name (create-system 'system-name))
          (set-system-in! system-name (list evt ...))
          (set-system-out! system-name (list out-evt ...))
-         (hash-set! (current-events) 'system-name  #f)
+         (current-events (hash-set (current-events) 'system-name  #f))
          (set-system-body!
           system-name
           (λ (sys)
@@ -422,7 +466,7 @@
             (define (output-events-fun state-name pre-name map-name reduce-name)
               (~?
                (begin
-                 (hash-set! (current-events) 'out-evt (~? (begin evt-val-body ...) (void))) ...)
+                 (current-events (hash-set (current-events) 'out-evt (~? (begin evt-val-body ...) (void)))) ...)
                (void))(void))
             (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
             (begin
@@ -449,7 +493,6 @@
      (list->set (map component-id (cons archetype rest)))
      (list->set (map car (hash->list (entity-components ent))))))
   (define matches (filter archetype-match? (map cdr (hash->list entities))))
-  #;(displayln matches)
   matches)
 
 ;; add a system to the dependency graph in the current world

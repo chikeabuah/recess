@@ -42,7 +42,7 @@ playing area (random number range) smaller.
 
 (define-system cross-my-ocean
   #:in [seconds clock/e]
-  #:pre y (sleep 1)
+  #:pre y (displayln 1)
   #:query e (lookup Player)
   ;; when there are only 5 players left it's all sharks and the rest are seaweed
   #:map mapval (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess) e
