@@ -21,6 +21,6 @@
 (module+ main
  (begin-recess
   #:systems sync-to-clock
-  #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
+  #:initialize (add-entity! (list Count))
   #:stop (because #:systems sync-to-clock)))
   

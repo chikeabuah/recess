@@ -17,6 +17,6 @@
 (module+ main
  (begin-recess
   #:systems sync-to-clock
-  #:initialize (set-event! clock/e 0)
+  #:initialize 
   #:stop (because #:systems sync-to-clock)))
   
