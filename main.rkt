@@ -158,7 +158,8 @@
     [(_ (~seq #:systems system-name:id ...)
         (~seq #:initialize init-expr:expr ...)
         (~seq #:stop stop-expr:expr ...))
-     #'(parameterize ([current-world (world (gensym) (make-immutable-hasheq) (unweighted-graph/directed '()))]
+     #'(parameterize ([current-world
+                       (world (gensym) (make-immutable-hasheq) (unweighted-graph/directed '()))]
                       [start-time (current-seconds)]
                       [current-events (poll-events (current-events))])
          (begin
@@ -177,7 +178,6 @@
              (on-key big-bang-recess-key)
              (on-mouse big-bang-recess-mouse)
              (stop-when (big-bang-stop-condition (λ () (and stop-expr ...)))))))]))
-
 
 ;; `on-key` and `on-mouse` events record something inside a custom made world struct
 (define (big-bang-recess-key w key-event)
@@ -466,7 +466,10 @@
             (define (output-events-fun state-name pre-name map-name reduce-name)
               (~?
                (begin
-                 (current-events (hash-set (current-events) 'out-evt (~? (begin evt-val-body ...) (void)))) ...)
+                 (current-events (hash-set
+                                  (current-events)
+                                  'out-evt
+                                  (~? (begin evt-val-body ...) (void)))) ...)
                (void))(void))
             (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
             (begin
