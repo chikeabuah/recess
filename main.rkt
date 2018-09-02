@@ -27,11 +27,11 @@
 
 ;; this is an attempt to simplify modifying entities
 (define (+ ent . cmpnts)
-  (cond [(entity? ent) (add-components-to-entity! ent cmpnts)]
+  (cond [(entity? ent) (add-components-to-entity ent cmpnts)]
         [else (apply former-plus (cons ent cmpnts))]))
 
 (define (- ent . cmpnts)
-  (cond [(entity? ent) (remove-components-from-entity! ent cmpnts)]
+  (cond [(entity? ent) (remove-components-from-entity ent cmpnts)]
         [else (apply former-minus (cons ent cmpnts))]))
 
 (provide
@@ -67,18 +67,16 @@
 
 ;; entities
 ;; cmpnts is a (make-immutable-hasheq)
-(struct entity (id components) #:mutable)
+(struct entity (id components))
 
 ;; accepts a list of components
 (define/contract (add-entity! cmpnts)
   (->  (listof component?) entity?)
-  (define e (create-entity (gensym)))
   ;; NOTE: this means components are unique in an entity
   ;; we might not want this in practice
-  (set-entity-components! e (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts)))
+  (define e (create-entity (gensym) (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts))))
   ;; add e to world
   (when (current-world) (current-world (add-entity-to-world e (current-world))))
-  #;(displayln (world-entities (current-world)))
   e)
 
 ;; check if it's a component with data or not
@@ -99,10 +97,14 @@
   (define cmpnts-hash (entity-components e))
   (define keys (hash-keys cmpnts-hash))
   (define cmpnts-length (length keys))
-  (cond 
-    [(eq? cmpnts-length 1) (set-entity-components! e (hash-set cmpnts-hash (first keys) expr))]
-    [ref (set-entity-components! e (hash-set cmpnts-hash ref expr))]
-    [else (raise "attempt to set entity was ambiguous")]))
+  (define new-cmpnts-hash
+    (cond 
+      [(eq? cmpnts-length 1) (hash-set cmpnts-hash (first keys) expr)]
+      [ref (hash-set cmpnts-hash ref expr)]
+      [else (raise "attempt to set entity was ambiguous")]))
+  (define new-e (entity (entity-id e) new-cmpnts-hash))
+  (set-current-world-entity new-e)
+  new-e)
 
 (define (add-entity-to-world e wrld)
   (let ([current-entities (world-entities wrld)])
@@ -112,20 +114,31 @@
   (let ([current-entities (world-entities wrld)])
     (struct-copy world wrld [entities (hash-remove current-entities (entity-id e) e)])))
 
-(define (add-components-to-entity! e cmpnts)
-  (set-entity-components!
-   e
-   (hash-union
-    (entity-components e)
-    (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts))
-    #:combine (λ (old new) new)))
-  e)
+(define (add-components-to-entity e cmpnts)
+  (define new-e
+    (entity
+     (entity-id e)
+     (hash-union
+      (entity-components e)
+      (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts))
+      #:combine (λ (old new) new))))
+  (set-current-world-entity new-e)
+  new-e)
 
-(define (remove-components-from-entity! e cmpnts)
-  (for/list
-      ([cmpnt cmpnts])
-    (set-entity-components! e (hash-remove (entity-components e) (component-id cmpnt))))
-  e)
+(define (remove-components-from-entity e cmpnts)
+  (define to-rm (map component-id cmpnts))
+  (define (keep? cmpnt-assoc) (not (member (car cmpnt-assoc) to-rm)))
+  (define new-e
+    (entity
+     (entity-id e)
+     (make-immutable-hasheq (filter keep? (hash->list (entity-components e))))))
+  (set-current-world-entity new-e)
+  new-e)
+
+(define (set-current-world-entity new-e)
+  (current-world
+   (struct-copy world (current-world)
+                [entities (hash-set (world-entities (current-world)) (entity-id new-e) new-e)])))
 
 ;; get the value of a component described by ref
 ;; from the entity ent
@@ -134,7 +147,7 @@
 
 ;; worlds
 ;; entities are a make-immutable-hasheq
-(struct world (name entities dependency-graph) #:mutable)
+(struct world (name entities dependency-graph))
 
 ;; if we ever need to keep track of a list of worlds
 ;(struct universe (worlds) #:mutable)
