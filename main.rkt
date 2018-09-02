@@ -6,8 +6,7 @@
    racket/base
    racket/syntax
    racket/match)
-  graph
-  recess/big-bang-step
+  recess/init
   racket/syntax
   racket/match
   racket/generic
@@ -37,7 +36,7 @@
 
 (provide
  (all-defined-out)
- (all-from-out racket/base racket/syntax racket/match racket/list graph))
+ (all-from-out racket/base racket/syntax racket/match racket/list))
 
 ;; A component is an identifier
 ;; and optionally some other data
@@ -138,8 +137,8 @@
 (struct world (name entities dependency-graph) #:mutable)
 
 ;; if we ever need to keep track of a list of worlds
-(struct universe (worlds) #:mutable)
-(define recess-universe (universe '()))
+;(struct universe (worlds) #:mutable)
+;(define recess-universe (universe '()))
 
 ;; we can use parameters for general world managament and bookkeeping
 (define current-world (make-parameter #f))
@@ -153,35 +152,40 @@
   (syntax-parse stx
     [(_ (~seq #:systems system-name:id ...)
         (~seq #:initialize init-expr:expr ...)
-        (~seq #:stop stop-expr:expr ...))
+        (~seq #:stop stop-expr:expr ...)
+        (~seq #:run run-expr:id))
      #'(parameterize ([current-world
                        (world (gensym) (make-immutable-hasheq) (unweighted-graph/directed '()))]
                       [start-time (current-seconds)]
                       [current-events (poll-events (current-events))])
          (begin
-           ;; user's init expressions
-           init-expr ...
-           ;; build up the dependency graph
            (define systems (list system-name ...))
-           (for-each
-            (λ (sys)
-              (add-to-graph sys (system-in sys) (list) (world-dependency-graph (current-world))))
-            systems)
-           ;; iterate through the graph until the world's termination conditions are fulfilled
-           (big-bang-step start-time (λ () (and stop-expr ...)) current-events step-world)))]))
+           (define system-in-out-name-lists
+             (map (λ (sys) (list (system-in sys) (system-out sys) sys)) systems))
+           (define (init-func) init-expr ...)
+           (define tsorted-world
+             (recess-init
+              init-func
+              system-in-out-name-lists
+              (world-dependency-graph (current-world))))
+           (run-expr (list
+                      start-time
+                      (λ () (and stop-expr ...))
+                      current-events
+                      (step-world tsorted-world)))))]))
 
 ;; do a single iteration of a world graph
-(define (step-world)
-  (define tsorted-world (tsort (world-dependency-graph (current-world))))
-  (for-each (λ (arg)
-              (cond
-                [(event? arg)
-                 (display "this is an event:")(display arg)(displayln (event-name arg))]
-                [(system? arg)
-                 (display "executing ")(display arg)(displayln (system-id arg))
-                 ((system-body arg) arg)]
-                [else (display "unknown") (displayln arg)]))
-            tsorted-world))
+(define (step-world tsorted-world)
+  (λ ()
+    (for-each (λ (arg)
+                (cond
+                  [(event? arg)
+                   (display "this is an event:")(display arg)(displayln (event-name arg))]
+                  [(system? arg)
+                   (display "executing ")(display arg)(displayln (system-id arg))
+                   ((system-body arg) arg)]
+                  [else (display "unknown") (displayln arg)]))
+              tsorted-world)))
 
 ;; the idea here is to poll the events by examing the hash values
 ;; if the hash value is a thunk we invoke it 
@@ -450,20 +454,3 @@
   (define matches (filter archetype-match? (map cdr (hash->list entities))))
   matches)
 
-;; add a system to the dependency graph in the current world
-(define (add-to-graph system-name input-events output-events recess-graph)
-  (begin
-    (add-vertex! recess-graph system-name)
-    (for-each
-     (λ (ev)
-       (begin
-         (add-vertex! recess-graph ev)
-         (add-directed-edge! recess-graph ev system-name)))
-     input-events)
-    (for-each
-     (λ (ev)
-       (begin
-         (add-vertex! recess-graph ev)
-         (add-directed-edge! recess-graph system-name ev)))
-     output-events)
-    #;(display (graphviz recess-graph))))

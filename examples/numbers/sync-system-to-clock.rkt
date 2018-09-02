@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require recess)
+(require recess/run-big-bang)
 
 ;; the idea behind this system is to synchronize
 ;; a system's internal state with a time clock
@@ -17,6 +17,7 @@
 (module+ main
  (begin-recess
   #:systems sync-to-clock
-  #:initialize 
-  #:stop (because #:systems sync-to-clock)))
+  #:initialize #f
+  #:stop (because #:systems sync-to-clock)
+  #:run run/big-bang))
   

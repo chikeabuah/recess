@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require recess)
+(require recess/run-big-bang)
      
 (define-component Count 2) 
 
@@ -31,4 +31,5 @@
   (begin-recess
     #:systems factorial
     #:initialize (add-entity! (list Count))
-    #:stop (because #:systems factorial)))
+    #:stop (because #:systems factorial)
+    #:run run/big-bang))

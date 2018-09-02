@@ -1,14 +1,17 @@
 #lang racket/base
 
-(require 2htdp/universe 2htdp/image racket/hash)
+(require recess 2htdp/universe 2htdp/image racket/hash)
 
 (provide
- (all-defined-out))
+ (all-defined-out)
+ (all-from-out recess))
 
 ;; adapt recess to use big bang
 (struct big-bang-recess-world (pending-events recess-state last-output) #:transparent)
 
-(define (big-bang-step start-time stop-func current-events step-world)
+;; iterate through the graph until the world's termination conditions are fulfilled
+(define (run/big-bang args)
+  (match-define (list start-time stop-func current-events step-world) args)
   (big-bang (big-bang-recess-world (make-immutable-hasheq) #f #f)
     (on-tick (big-bang-step-world start-time current-events step-world) 1)
     (to-draw big-bang-draw-recess)
