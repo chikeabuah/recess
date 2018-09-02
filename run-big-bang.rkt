@@ -42,14 +42,14 @@
 
 ;; `on-key` and `on-mouse` events record something inside a custom made world struct
 (define (big-bang-recess-key w key-event)
-  (define events-so-far (big-bang-recess-world-pending-events w))
+  (match-define (big-bang-recess-world pe rs lo) w)
   (struct-copy big-bang-recess-world w
-               [pending-events (hash-set events-so-far 'key/e key-event)]))
+               [pending-events (hash-set pe 'key/e key-event)]))
 
 (define (big-bang-recess-mouse w x y mouse-event)
-  (define events-so-far (big-bang-recess-world-pending-events w))
+  (match-define (big-bang-recess-world pe rs lo) w)
   (struct-copy big-bang-recess-world w
-               [pending-events (hash-set events-so-far 'mouse/e mouse-event)]))
+               [pending-events (hash-set pe 'mouse/e mouse-event)]))
 
 ;; then `on-draw` will just pulls out the recess sink output
 (define (big-bang-draw-recess w)
