@@ -267,7 +267,7 @@
 (struct event:sink event (output))
 (struct event:transform event (f))
 
-(define (create-event name [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
+(define (create-event name [zero (list)] [plus (λ (x y) y)])  
   (event name zero plus))
 
 (define (set-event key value)
@@ -275,18 +275,18 @@
 
 (define-syntax (define-event stx)
   (syntax-parse stx
-    [(_ name (~optional value) (~optional zero) (~optional plus))
+    [(_ name (~optional zero) (~optional plus))
      #'(begin
-         (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
+         (define name (event 'name (~? zero (list)) (~? plus (λ (former new) new))))
          ;; record it and it's initial value in the events table
-         (current-events (hash-set (current-events) name (~? value #f)))
+         (current-events (hash-set (current-events) name (event-zero name)))
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
 
 ;; image event
-(define image/e (event:source 'image/e (list) append #f))
-(current-events (hash-set (current-events) image/e #f))
+(define image/e (event:sink 'image/e (list) append #f))
+(current-events (hash-set (current-events) image/e (list)))
 
 ;; clock event
 (define clock/e (event:source 'clock/e #f #f #f))
@@ -444,10 +444,14 @@
               (define (output-events-fun state-name pre-name map-name reduce-name)
                 (~?
                  (begin
-                   (current-events (hash-set
-                                    (current-events)
-                                    out-evt
-                                    (~? (begin evt-val-body ...) (void)))) ...)
+                   (current-events
+                    (hash-set
+                     (current-events)
+                     out-evt
+                     ;; combine events
+                     (~? ((event-plus out-evt)
+                          (hash-ref (current-events) out-evt)
+                          (begin evt-val-body ...)) (void)))) ...)
                  (void))(void))
               (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
               ;; persist the end of iteration state
