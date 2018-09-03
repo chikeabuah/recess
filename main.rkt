@@ -453,7 +453,10 @@
                           (hash-ref (current-events) out-evt)
                           (begin evt-val-body ...)) (void)))) ...)
                  (void))(void))
-              (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
+              (define output-events
+                (if enabled
+                    (output-events-fun state-2 pre-val-0 maps-val reduce-val)
+                    #f))
               ;; persist the end of iteration state
               ;; this helps with checking the world termination condition
               ;; between iterations

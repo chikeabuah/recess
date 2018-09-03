@@ -8,7 +8,6 @@
 ;; a numeric entity with a time clock
 (define-system sync-to-clock
   #:in [seconds clock/e]
-  #:pre x (sleep 1) (displayln seconds)
   ;; this system is enabled as long as the clock's value is less
   ;; than 15 seconds
   #:enabled? (< seconds 15)
@@ -16,7 +15,8 @@
   ;; we know there will only be one
   #:query e (lookup Count)
   ;; every iteration increment e by 1 and print it 
-  #:map _ (set! e (+ (get e 'Count) 1)) (displayln (get e 'Count)))
+  #:map m (set! e (+ (get e 'Count) 1)) (displayln (get e 'Count)) (get e 'Count)
+  #:out [image/e (list (cons (text (number->string (car m)) 24 "olive") (make-posn 20 20)))])
 
 (module+ main
  (begin-recess
