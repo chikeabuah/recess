@@ -77,8 +77,7 @@ playing area (random number range) smaller.
   #:in [on-seaweed seaweed-attack]
   #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Shark)) "shark")]
   #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Fish)) "fish")]
-  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Seaweed)) "seaweed")]
-  )
+  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Seaweed)) "seaweed")])
 
 (module+ main
   (begin-recess
