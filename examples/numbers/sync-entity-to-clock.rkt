@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require recess)
+(require recess/run-big-bang)
      
 (define-component Count 0) 
 
@@ -21,6 +21,7 @@
 (module+ main
  (begin-recess
   #:systems sync-to-clock
-  #:initialize (add-entity! (list Count)) (set-event! clock/e 0)
-  #:stop (because #:systems sync-to-clock)))
+  #:initialize (add-entity! (list Count))
+  #:stop (because #:systems sync-to-clock)
+  #:run run/big-bang))
   

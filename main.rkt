@@ -6,10 +6,11 @@
    racket/base
    racket/syntax
    racket/match)
-  graph
+  recess/init
   racket/syntax
   racket/match
   racket/generic
+  racket/hash
   racket/contract
   racket/list)
 
@@ -26,16 +27,16 @@
 
 ;; this is an attempt to simplify modifying entities
 (define (+ ent . cmpnts)
-  (cond [(entity? ent) (add-components-to-entity! ent cmpnts)]
+  (cond [(entity? ent) (add-components-to-entity ent cmpnts)]
         [else (apply former-plus (cons ent cmpnts))]))
 
 (define (- ent . cmpnts)
-  (cond [(entity? ent) (remove-components-from-entity! ent cmpnts)]
+  (cond [(entity? ent) (remove-components-from-entity ent cmpnts)]
         [else (apply former-minus (cons ent cmpnts))]))
 
 (provide
  (all-defined-out)
- (all-from-out racket/base racket/syntax racket/match racket/list graph))
+ (all-from-out racket/base racket/syntax racket/match racket/list))
 
 ;; A component is an identifier
 ;; and optionally some other data
@@ -65,27 +66,23 @@
          (list components ...))]))
 
 ;; entities
-;; cmpnts is a (make-hasheq)
-(struct entity (id components) #:mutable)
+;; cmpnts is a (make-immutable-hasheq)
+(struct entity (id components))
 
 ;; accepts a list of components
 (define/contract (add-entity! cmpnts)
   (->  (listof component?) entity?)
-  (let* ([e (create-entity (gensym))]
-         [hash (make-hasheq)]
-         [_ (for/list
-                ([cmpnt cmpnts])
-              ;; check if it's a component with data or not
-              (if (component-proto cmpnt)
-                  ;; NOTE: this means components are unique in an entity
-                  ;; we might not want this in practice
-                  (hash-set! hash (component-id cmpnt) (component-proto cmpnt))
-                  (hash-set! hash (component-id cmpnt) #t)))]
-         [_ (set-entity-components! e hash)])
-    ;; add e to world
-    (when (current-world) (add-entity-to-world! e (current-world)))
-    ;(display (world-entities (current-world)))
-    e))
+  ;; NOTE: this means components are unique in an entity
+  ;; we might not want this in practice
+  (define e (create-entity (gensym) (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts))))
+  ;; add e to world
+  (when (current-world) (current-world (add-entity-to-world e (current-world))))
+  e)
+
+;; check if it's a component with data or not
+(define (get-cmpnt-val cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #t))
+
+(define (make-cmpnt-id-val-pair cmpnt) (cons (component-id cmpnt) (get-cmpnt-val cmpnt)))
 
 (define (add-entities! cmpnts n)
   (map add-entity! (make-list n cmpnts)))
@@ -100,42 +97,48 @@
   (define cmpnts-hash (entity-components e))
   (define keys (hash-keys cmpnts-hash))
   (define cmpnts-length (length keys))
-  (cond 
-    [(eq? cmpnts-length 1) (hash-set! cmpnts-hash (first keys) expr)]
-    [ref (hash-set! cmpnts-hash ref expr)]
-    [else (raise "attempt to set entity was ambiguous")]))
+  (define new-cmpnts-hash
+    (cond 
+      [(eq? cmpnts-length 1) (hash-set cmpnts-hash (first keys) expr)]
+      [ref (hash-set cmpnts-hash ref expr)]
+      [else (raise "recess: attempt to set entity was ambiguous")]))
+  (define new-e (entity (entity-id e) new-cmpnts-hash))
+  (set-current-world-entity new-e)
+  new-e)
 
-(define (add-entity-to-world! e wrld)
+(define (add-entity-to-world e wrld)
   (let ([current-entities (world-entities wrld)])
-    (hash-set! current-entities (entity-id e) e)))
+    (struct-copy world wrld [entities (hash-set current-entities (entity-id e) e)])))
 
 (define (remove-entity-from-world! e wrld)
   (let ([current-entities (world-entities wrld)])
-    (hash-remove! current-entities (entity-id e))))
+    (struct-copy world wrld [entities (hash-remove current-entities (entity-id e) e)])))
 
-(define (add-components-to-entity! e cmpnts)
-  (for/list
-      ([cmpnt cmpnts])
-    ;; we're doing this pattern in multiple places
-    (if (component-proto cmpnt)
-        (hash-set! (entity-components e) (component-id cmpnt) (component-proto cmpnt))
-        (hash-set! (entity-components e) (component-id cmpnt) #t)))
-  e)
+(define (add-components-to-entity e cmpnts)
+  (define new-e
+    (entity
+     (entity-id e)
+     (hash-union
+      (entity-components e)
+      (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts))
+      #:combine (λ (old new) new))))
+  (set-current-world-entity new-e)
+  new-e)
 
-(define (remove-components-from-entity! e cmpnts)
-  (for/list
-      ([cmpnt cmpnts])
-    (hash-remove! (entity-components e) (component-id cmpnt)))
-  e)
+(define (remove-components-from-entity e cmpnts)
+  (define to-rm (map component-id cmpnts))
+  (define (keep? cmpnt-assoc) (not (member (car cmpnt-assoc) to-rm)))
+  (define new-e
+    (entity
+     (entity-id e)
+     (make-immutable-hasheq (filter keep? (hash->list (entity-components e))))))
+  (set-current-world-entity new-e)
+  new-e)
 
-(define (get-entities-with-archetype wrld atype)
-  1)
-
-(define (entity-has-archetype? ent atype)
-  2)
-
-(define (entity-contains-archetype? ent atype)
-  3)
+(define (set-current-world-entity new-e)
+  (current-world
+   (struct-copy world (current-world)
+                [entities (hash-set (world-entities (current-world)) (entity-id new-e) new-e)])))
 
 ;; get the value of a component described by ref
 ;; from the entity ent
@@ -143,16 +146,16 @@
   (hash-ref (entity-components ent) ref))
 
 ;; worlds
-;; entities are a make-hasheq
-(struct world (name entities dependency-graph) #:mutable)
+;; entities are a make-immutable-hasheq
+(struct world (name entities dependency-graph))
 
 ;; if we ever need to keep track of a list of worlds
-(struct universe (worlds) #:mutable)
-(define recess-universe (universe '()))
+;(struct universe (worlds) #:mutable)
+;(define recess-universe (universe '()))
 
 ;; we can use parameters for general world managament and bookkeeping
 (define current-world (make-parameter #f))
-(define current-events (make-parameter (make-hasheq)))
+(define current-events (make-parameter (make-immutable-hasheq)))
 (define start-time (make-parameter (current-seconds)))
 
 ;; initialize, iterate, terminate at some point
@@ -162,38 +165,47 @@
   (syntax-parse stx
     [(_ (~seq #:systems system-name:id ...)
         (~seq #:initialize init-expr:expr ...)
-        (~seq #:stop stop-expr:expr ...))
-     #'(parameterize ([current-world (world (gensym) (make-hasheq) (unweighted-graph/directed '()))]
-                      [start-time (current-seconds)])
+        (~seq #:stop stop-expr:expr ...)
+        (~seq #:run run-expr:id))
+     #'(parameterize ([current-world
+                       (world (gensym) (make-immutable-hasheq) (unweighted-graph/directed '()))]
+                      [start-time (current-seconds)]
+                      [current-events (poll-events (current-events))])
          (begin
-           ;; user's init expressions
-           init-expr ...
-           ;; build up the dependency graph
            (define systems (list system-name ...))
-           (for-each
-            (λ (sys)
-              (add-to-graph sys (system-in sys) (list) (world-dependency-graph (current-world))))
-            systems)
-           ;; iterate through the graph until the world's termination conditions are fulfilled          
-           (let loop ()
-             ;; poll events
-             (parameterize ([current-events (poll-events (current-events))])
-               (displayln "executing recess graph...")
-               (step-world))
-             (when (and stop-expr ...) (loop)))))]))
+           (define system-in-out-name-lists
+             (map (λ (sys) (list (system-in sys) (system-out sys) sys)) systems))
+           (define (init-func) init-expr ...)
+           (define first-tsorted-world
+             (recess-init
+              init-func
+              system-in-out-name-lists
+              (world-dependency-graph (current-world))))
+           (current-world (struct-copy world (current-world) [dependency-graph first-tsorted-world]))
+           (run-expr (list
+                      start-time
+                      (λ () (and stop-expr ...))
+                      current-events
+                      (step-world)
+                      current-world))))]))
 
 ;; do a single iteration of a world graph
+;; produce the world for the next iteration
 (define (step-world)
-  (define tsorted-world (tsort (world-dependency-graph (current-world))))
-  (for-each (λ (arg)
-              (cond
-                [(event? arg)
-                 (display "this is an event:")(display arg)(displayln (event-name arg))]
-                [(system? arg)
-                 (display "executing ")(display arg)(displayln (system-id arg))
-                 ((system-body arg) arg)]
-                [else (display "unknown") (displayln arg)]))
-            tsorted-world))
+  (λ ()
+    (define (step-func arg)
+      (cond
+        [(event? arg)
+         (display "this is an event:")(display arg)(displayln (event-name arg)) arg]
+        [(system? arg)
+         (display "executing ")(display arg)(displayln (system-id arg))
+         ;; this call returns the system for the next iteration
+         (define new-system-state ((system-body arg) arg)) new-system-state]
+        [else (display "unknown")
+              (displayln arg)
+              (raise "recess: unknown graph node type")]))
+    (define new-world-graph (map step-func (world-dependency-graph (current-world))))
+    (current-world (struct-copy world (current-world) [dependency-graph new-world-graph]))))
 
 ;; the idea here is to poll the events by examing the hash values
 ;; if the hash value is a thunk we invoke it 
@@ -203,7 +215,7 @@
     (if (procedure? (cdr event-pair))
         (cons (car event-pair) ((cdr event-pair)))
         event-pair))
-  (make-hasheq (map poll (hash->list evnts))))
+  (make-immutable-hasheq (map poll (hash->list evnts))))
 
 (define-syntax (because stx)
   (syntax-parse stx
@@ -215,13 +227,18 @@
      #:with ent-exprs #'(~? (list ent-expr ...) (list))
      #'(let ([syscond (systems-condition? systems)]
              [evcond (events-condition? event-exprs)]
-             [entcond (entities-condition? ent-exprs)]) 
+             [entcond (entities-condition? ent-exprs)])
          (and syscond evcond entcond))]))
 
 ;; helpers for determining world termination conditions
 (define (systems-condition? systems)
-  (let ([enabled? (λ (sys) (system-enabled sys))])
-    (andmap enabled? systems)))
+  (define active-sys-ids (map system-id systems))
+  (define (active-sys? sys) (member (system-id sys) active-sys-ids))
+  ;; TODO compose
+  (define active-systems
+    (filter active-sys? (filter system? (world-dependency-graph (current-world)))))
+  (define (disabled? sys) (not (system-enabled sys)))
+  (andmap disabled? active-systems))
 
 (define (events-condition? events)
   #t)
@@ -230,8 +247,8 @@
 ;; database; things like: is the number of player entities equal to 0?
 ;; for now just evaluating the expression should work
 (define (entities-condition? ent-exprs)
-  (let ([invert? (λ (ent-expr) (not ent-expr))])
-    (andmap invert? ent-exprs)))
+  (let ([true? (λ (ent-expr) ent-expr)])
+    (andmap true? ent-exprs)))
 
 ;; An event is an identifier [also optionally a type predicate]
 ;; event ideas:
@@ -253,8 +270,8 @@
 (define (create-event name [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
   (event name zero plus))
 
-(define (set-event! key value)
-  (hash-set! (current-events) key value))
+(define (set-event key value)
+  (hash-set (current-events) key value))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
@@ -262,18 +279,26 @@
      #'(begin
          (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
          ;; record it and it's initial value in the events table
-         (hash-set! (current-events) 'name (~? value #f))
+         (current-events (hash-set (current-events) 'name (~? value #f)))
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
-;;; the source events have an input which is represented as a thunk
-;;; we want to poll the thunks to produce their value
+
+;; image event
+(define image/e (event:source 'image/e #f #f #f))
+(current-events (hash-set (current-events) 'image/e #f))
 
 ;; clock event
-;; just an epoch for now
-(define clock/e (event:source 'clock/e #f #f (λ () (- (current-seconds) (start-time)))))
-;; record value in the hash table as a thunk
-(hash-set! (current-events) 'clock/e (λ () (- (current-seconds) (start-time))))
+(define clock/e (event:source 'clock/e #f #f #f))
+(current-events (hash-set (current-events) 'clock/e #f))
+
+;; key event
+(define key/e (event:source 'key/e #f #f #f))
+(current-events (hash-set (current-events) 'key/e #f))
+
+;; mouse event
+(define mouse/e (event:source 'mouse/e #f #f #f))
+(current-events (hash-set (current-events) 'mouse/e #f))
 
 ;;; define-system syntax and identifier bindings
 
@@ -346,21 +371,20 @@
   #:methods gen:system-generic []
   #:methods gen:event-generic
   [(define (event-generic-name event-generic)
-     (system-id event-generic))]
-  #:mutable)
+     (system-id event-generic))])
 
 (define (create-system
          name
-         [body #f]
          [in #f]
+         [out #f]
+         [body #f]
          [state #f]
          [pre #f]
-         [enabled #f]
+         [enabled #t]
          [query #f]
          [map  #f]
          [reduce #f]
-         [post  #f]
-         [out #f])
+         [post  #f])
   (system name body in state pre enabled query map reduce post out))
 
 (define-syntax (define-system stx)
@@ -381,56 +405,58 @@
      #:with map-name #'(~? given-maps-name default-maps-name)
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
      #:with entities-name #'(~? given-entity-name default-entity-name)
-     #'(begin   
-         (define system-name (create-system 'system-name))
-         (set-system-in! system-name (list evt ...))
-         (set-system-out! system-name (list out-evt ...))
-         (hash-set! (current-events) 'system-name  #f)
-         (set-system-body!
-          system-name
-          (λ (sys)
-            (define prior-state (system-state sys))
-            (define (pre-body-fun state-name evts)
-              (match-define (list evt-name ...) evts)
-              (~? (begin pre-body ...) (void)))
-            (define (enabled-body-fun state-name pre-name evts)
-              (match-define (list evt-name ...) evts)
-              (~? (and enabled?-body ...) #t))
-            (define (post-body-fun state-name pre-name reduce-name)
-              (~? (begin post-body ...) (void)))
-            (define state-0 (if prior-state prior-state (~? initial-state #f)))
-            (define get-event-vals (λ (ev) (hash-ref (current-events) (event-generic-name ev))))
-            (define event-vals (map get-event-vals (filter event-generic? (list evt ...))))
-            (define pre-val-0 (pre-body-fun state-0 event-vals))
-            (define state-1 (if (not (void? pre-val-0)) pre-val-0 state-0))
-            (define input-events (let-values ([(evt-name ...) (values evt ...)])
-                                   (list evt-name ...)))
-            (define enabled (enabled-body-fun state-1 pre-val-0 event-vals))
-            (define entities (if enabled (~? query (list)) (list)))
-            (define (map-body-fun state-name pre-name entities-name evts)
-              (match-define (list evt-name ...) evts)
-              (~? (map (λ (entities-name) map-body ...) entities) (void)))
-            (define (reduce-body-fun state-name pre-name map-name)
-              (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))
-            (define maps-val (if
-                              enabled
-                              (map-body-fun state-1 pre-val-0 entities event-vals)
-                              (list)))
-            (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
-            (define post (post-body-fun state-1 pre-val-0 reduce-val))
-            (define state-2 (if (not (void? post)) post state-1))
-            (define (output-events-fun state-name pre-name map-name reduce-name)
-              (~?
-               (begin
-                 (hash-set! (current-events) 'out-evt (~? (begin evt-val-body ...) (void))) ...)
-               (void))(void))
-            (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
-            (begin
+     #'(begin
+         (current-events (hash-set (current-events) 'system-name  #f))
+         (define system-name
+           (create-system
+            'system-name (list evt ...) (list out-evt ...)
+            ;; system body
+            (λ (sys)
+              (define prior-state (system-state sys))
+              (define (pre-body-fun state-name evts)
+                (match-define (list evt-name ...) evts)
+                (~? (begin pre-body ...) (void)))
+              (define (enabled-body-fun state-name pre-name evts)
+                (match-define (list evt-name ...) evts)
+                (~? (and enabled?-body ...) #t))
+              (define (post-body-fun state-name pre-name reduce-name)
+                (~? (begin post-body ...) (void)))
+              (define state-0 (if prior-state prior-state (~? initial-state #f)))
+              (define get-event-vals (λ (ev) (hash-ref (current-events) (event-generic-name ev))))
+              (define event-vals (map get-event-vals (filter event-generic? (list evt ...))))
+              (define pre-val-0 (pre-body-fun state-0 event-vals))
+              (define state-1 (if (not (void? pre-val-0)) pre-val-0 state-0))
+              (define input-events (let-values ([(evt-name ...) (values evt ...)])
+                                     (list evt-name ...)))
+              (define enabled (enabled-body-fun state-1 pre-val-0 event-vals))
+              (define entities (if enabled (~? query (list)) (list)))
+              (define (map-body-fun state-name pre-name entities-name evts)
+                (match-define (list evt-name ...) evts)
+                (~? (map (λ (entities-name) map-body ...) entities) (void)))
+              (define (reduce-body-fun state-name pre-name map-name)
+                (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))
+              (define maps-val (if
+                                enabled
+                                (map-body-fun state-1 pre-val-0 entities event-vals)
+                                (list)))
+              (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
+              (define post (post-body-fun state-1 pre-val-0 reduce-val))
+              (define state-2 (if (not (void? post)) post state-1))
+              (define (output-events-fun state-name pre-name map-name reduce-name)
+                (~?
+                 (begin
+                   (current-events (hash-set
+                                    (current-events)
+                                    'out-evt
+                                    (~? (begin evt-val-body ...) (void)))) ...)
+                 (void))(void))
+              (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
               ;; persist the end of iteration state
-              (set-system-state! system-name state-2)
               ;; this helps with checking the world termination condition
               ;; between iterations
-              (set-system-enabled! system-name enabled))))
+              (define new-sys (struct-copy system system-name [state state-2] [enabled enabled]))
+              (set! system-name new-sys)
+              new-sys)))
          system-name)]))
 
 ;; helper methods
@@ -449,23 +475,5 @@
      (list->set (map component-id (cons archetype rest)))
      (list->set (map car (hash->list (entity-components ent))))))
   (define matches (filter archetype-match? (map cdr (hash->list entities))))
-  #;(displayln matches)
   matches)
 
-;; add a system to the dependency graph in the current world
-(define (add-to-graph system-name input-events output-events recess-graph)
-  (begin
-    (add-vertex! recess-graph system-name)
-    (for-each
-     (λ (ev)
-       (begin
-         (add-vertex! recess-graph ev)
-         (add-directed-edge! recess-graph ev system-name)))
-     input-events)
-    (for-each
-     (λ (ev)
-       (begin
-         (add-vertex! recess-graph ev)
-         (add-directed-edge! recess-graph system-name ev)))
-     output-events)
-    #;(display (graphviz recess-graph))))

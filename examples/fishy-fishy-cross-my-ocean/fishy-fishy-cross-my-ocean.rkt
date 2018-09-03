@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require recess)
+(require recess/run-big-bang)
 
 ;; this example implements a RNG simulation of the children's playground game:
 ;; fishy fishy cross my ocean
@@ -42,7 +42,6 @@ playing area (random number range) smaller.
 
 (define-system cross-my-ocean
   #:in [seconds clock/e]
-  #:pre y (sleep 1)
   #:query e (lookup Player)
   ;; when there are only 5 players left it's all sharks and the rest are seaweed
   #:map mapval (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess) e
@@ -68,4 +67,5 @@ playing area (random number range) smaller.
     #:initialize
     (add-entities! (list Shark Player Guess) SHARKS)
     (add-entities! (list Fish Player Guess) FISH)
-    #:stop (because #:entities (eq? 0 (length (lookup Fish))))))
+    #:stop (because #:entities (eq? 0 (length (lookup Fish))))
+    #:run run/big-bang))
