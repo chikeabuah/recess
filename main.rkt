@@ -101,7 +101,7 @@
     (cond 
       [(eq? cmpnts-length 1) (hash-set cmpnts-hash (first keys) expr)]
       [ref (hash-set cmpnts-hash ref expr)]
-      [else (raise "attempt to set entity was ambiguous")]))
+      [else (raise "recess: attempt to set entity was ambiguous")]))
   (define new-e (entity (entity-id e) new-cmpnts-hash))
   (set-current-world-entity new-e)
   new-e)
@@ -176,29 +176,36 @@
            (define system-in-out-name-lists
              (map (λ (sys) (list (system-in sys) (system-out sys) sys)) systems))
            (define (init-func) init-expr ...)
-           (define tsorted-world
+           (define first-tsorted-world
              (recess-init
               init-func
               system-in-out-name-lists
               (world-dependency-graph (current-world))))
+           (current-world (struct-copy world (current-world) [dependency-graph first-tsorted-world]))
            (run-expr (list
                       start-time
                       (λ () (and stop-expr ...))
                       current-events
-                      (step-world tsorted-world)))))]))
+                      (step-world)
+                      current-world))))]))
 
 ;; do a single iteration of a world graph
-(define (step-world tsorted-world)
+;; produce the world for the next iteration
+(define (step-world)
   (λ ()
-    (for-each (λ (arg)
-                (cond
-                  [(event? arg)
-                   (display "this is an event:")(display arg)(displayln (event-name arg))]
-                  [(system? arg)
-                   (display "executing ")(display arg)(displayln (system-id arg))
-                   ((system-body arg) arg)]
-                  [else (display "unknown") (displayln arg)]))
-              tsorted-world)))
+    (define (step-func arg)
+      (cond
+        [(event? arg)
+         (display "this is an event:")(display arg)(displayln (event-name arg)) arg]
+        [(system? arg)
+         (display "executing ")(display arg)(displayln (system-id arg))
+         ;; this call returns the system for the next iteration
+         (define new-system-state ((system-body arg) arg)) new-system-state]
+        [else (display "unknown")
+              (displayln arg)
+              (raise "recess: unknown graph node type")]))
+    (define new-world-graph (map step-func (world-dependency-graph (current-world))))
+    (current-world (struct-copy world (current-world) [dependency-graph new-world-graph]))))
 
 ;; the idea here is to poll the events by examing the hash values
 ;; if the hash value is a thunk we invoke it 
@@ -225,8 +232,13 @@
 
 ;; helpers for determining world termination conditions
 (define (systems-condition? systems)
-  (let ([disabled? (λ (sys) (not (system-enabled sys)))])
-    (andmap disabled? systems)))
+  (define active-sys-ids (map system-id systems))
+  (define (active-sys? sys) (member (system-id sys) active-sys-ids))
+  ;; TODO compose
+  (define active-systems
+    (filter active-sys? (filter system? (world-dependency-graph (current-world)))))
+  (define (disabled? sys) (not (system-enabled sys)))
+  (andmap disabled? active-systems))
 
 (define (events-condition? events)
   #t)
@@ -359,21 +371,20 @@
   #:methods gen:system-generic []
   #:methods gen:event-generic
   [(define (event-generic-name event-generic)
-     (system-id event-generic))]
-  #:mutable)
+     (system-id event-generic))])
 
 (define (create-system
          name
-         [body #f]
          [in #f]
+         [out #f]
+         [body #f]
          [state #f]
          [pre #f]
          [enabled #t]
          [query #f]
          [map  #f]
          [reduce #f]
-         [post  #f]
-         [out #f])
+         [post  #f])
   (system name body in state pre enabled query map reduce post out))
 
 (define-syntax (define-system stx)
@@ -394,59 +405,58 @@
      #:with map-name #'(~? given-maps-name default-maps-name)
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
      #:with entities-name #'(~? given-entity-name default-entity-name)
-     #'(begin   
-         (define system-name (create-system 'system-name))
-         (set-system-in! system-name (list evt ...))
-         (set-system-out! system-name (list out-evt ...))
+     #'(begin
          (current-events (hash-set (current-events) 'system-name  #f))
-         (set-system-body!
-          system-name
-          (λ (sys)
-            (define prior-state (system-state sys))
-            (define (pre-body-fun state-name evts)
-              (match-define (list evt-name ...) evts)
-              (~? (begin pre-body ...) (void)))
-            (define (enabled-body-fun state-name pre-name evts)
-              (match-define (list evt-name ...) evts)
-              (~? (and enabled?-body ...) #t))
-            (define (post-body-fun state-name pre-name reduce-name)
-              (~? (begin post-body ...) (void)))
-            (define state-0 (if prior-state prior-state (~? initial-state #f)))
-            (define get-event-vals (λ (ev) (hash-ref (current-events) (event-generic-name ev))))
-            (define event-vals (map get-event-vals (filter event-generic? (list evt ...))))
-            (define pre-val-0 (pre-body-fun state-0 event-vals))
-            (define state-1 (if (not (void? pre-val-0)) pre-val-0 state-0))
-            (define input-events (let-values ([(evt-name ...) (values evt ...)])
-                                   (list evt-name ...)))
-            (define enabled (enabled-body-fun state-1 pre-val-0 event-vals))
-            (define entities (if enabled (~? query (list)) (list)))
-            (define (map-body-fun state-name pre-name entities-name evts)
-              (match-define (list evt-name ...) evts)
-              (~? (map (λ (entities-name) map-body ...) entities) (void)))
-            (define (reduce-body-fun state-name pre-name map-name)
-              (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))
-            (define maps-val (if
-                              enabled
-                              (map-body-fun state-1 pre-val-0 entities event-vals)
-                              (list)))
-            (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
-            (define post (post-body-fun state-1 pre-val-0 reduce-val))
-            (define state-2 (if (not (void? post)) post state-1))
-            (define (output-events-fun state-name pre-name map-name reduce-name)
-              (~?
-               (begin
-                 (current-events (hash-set
-                                  (current-events)
-                                  'out-evt
-                                  (~? (begin evt-val-body ...) (void)))) ...)
-               (void))(void))
-            (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
-            (begin
+         (define system-name
+           (create-system
+            'system-name (list evt ...) (list out-evt ...)
+            ;; system body
+            (λ (sys)
+              (define prior-state (system-state sys))
+              (define (pre-body-fun state-name evts)
+                (match-define (list evt-name ...) evts)
+                (~? (begin pre-body ...) (void)))
+              (define (enabled-body-fun state-name pre-name evts)
+                (match-define (list evt-name ...) evts)
+                (~? (and enabled?-body ...) #t))
+              (define (post-body-fun state-name pre-name reduce-name)
+                (~? (begin post-body ...) (void)))
+              (define state-0 (if prior-state prior-state (~? initial-state #f)))
+              (define get-event-vals (λ (ev) (hash-ref (current-events) (event-generic-name ev))))
+              (define event-vals (map get-event-vals (filter event-generic? (list evt ...))))
+              (define pre-val-0 (pre-body-fun state-0 event-vals))
+              (define state-1 (if (not (void? pre-val-0)) pre-val-0 state-0))
+              (define input-events (let-values ([(evt-name ...) (values evt ...)])
+                                     (list evt-name ...)))
+              (define enabled (enabled-body-fun state-1 pre-val-0 event-vals))
+              (define entities (if enabled (~? query (list)) (list)))
+              (define (map-body-fun state-name pre-name entities-name evts)
+                (match-define (list evt-name ...) evts)
+                (~? (map (λ (entities-name) map-body ...) entities) (void)))
+              (define (reduce-body-fun state-name pre-name map-name)
+                (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))
+              (define maps-val (if
+                                enabled
+                                (map-body-fun state-1 pre-val-0 entities event-vals)
+                                (list)))
+              (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
+              (define post (post-body-fun state-1 pre-val-0 reduce-val))
+              (define state-2 (if (not (void? post)) post state-1))
+              (define (output-events-fun state-name pre-name map-name reduce-name)
+                (~?
+                 (begin
+                   (current-events (hash-set
+                                    (current-events)
+                                    'out-evt
+                                    (~? (begin evt-val-body ...) (void)))) ...)
+                 (void))(void))
+              (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
               ;; persist the end of iteration state
-              (set-system-state! system-name state-2)
               ;; this helps with checking the world termination condition
               ;; between iterations
-              (set-system-enabled! system-name enabled))))
+              (define new-sys (struct-copy system system-name [state state-2] [enabled enabled]))
+              (set! system-name new-sys)
+              new-sys)))
          system-name)]))
 
 ;; helper methods
