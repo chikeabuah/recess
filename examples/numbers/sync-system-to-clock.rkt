@@ -12,7 +12,8 @@
   ;; every iteration increment x by 1
   #:pre _ (displayln x) (sleep 1) (displayln seconds) (+ x 1)
   ;; this system is enabled as long as x is less than 15
-  #:enabled? (< x 15))
+  #:enabled? (< x 15)
+  #:out [image/e (list (circle 20 "solid" "blue") '(5 5))])
 
 (module+ main
  (begin-recess

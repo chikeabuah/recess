@@ -4,7 +4,7 @@
 
 (provide
  (all-defined-out)
- (all-from-out recess))
+ (all-from-out recess 2htdp/image))
 
 ;; adapt recess to use big bang
 (struct big-bang-recess-world (pending-events current-recess-world last-output) #:transparent)
@@ -29,7 +29,7 @@
     (define events-so-far
       (hash-set
        (big-bang-recess-world-pending-events w)
-       'clock/e
+       clock/e
        (- (current-seconds) (start-time))))
     (current-events (hash-union (current-events) events-so-far #:combine (λ (old new) new)))
     ;;then step
@@ -45,12 +45,12 @@
 (define (big-bang-recess-key w key-event)
   (match-define (big-bang-recess-world pe crw lo) w)
   (struct-copy big-bang-recess-world w
-               [pending-events (hash-set pe 'key/e key-event)]))
+               [pending-events (hash-set pe key/e key-event)]))
 
 (define (big-bang-recess-mouse w x y mouse-event)
   (match-define (big-bang-recess-world pe crw lo) w)
   (struct-copy big-bang-recess-world w
-               [pending-events (hash-set pe 'mouse/e mouse-event)]))
+               [pending-events (hash-set pe mouse/e mouse-event)]))
 
 ;; then `on-draw` will just pulls out the recess sink output
 (define (big-bang-draw-recess w)
