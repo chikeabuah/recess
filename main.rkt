@@ -267,7 +267,7 @@
 (struct event:sink event (output))
 (struct event:transform event (f))
 
-(define (create-event name [value (λ (x) #t)] [zero (λ (x) #t)] [plus (λ (x) #t)])  
+(define (create-event name [zero (list)] [plus (λ (x y) y)])  
   (event name zero plus))
 
 (define (set-event key value)
@@ -275,30 +275,30 @@
 
 (define-syntax (define-event stx)
   (syntax-parse stx
-    [(_ name (~optional value) (~optional zero) (~optional plus))
+    [(_ name (~optional zero) (~optional plus))
      #'(begin
-         (define name (event 'name (~? zero (λ (x) #t)) (~? plus (λ (x) #t))))
+         (define name (event 'name (~? zero (list)) (~? plus (λ (former new) new))))
          ;; record it and it's initial value in the events table
-         (current-events (hash-set (current-events) 'name (~? value #f)))
+         (current-events (hash-set (current-events) name (event-zero name)))
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
 
 ;; image event
-(define image/e (event:source 'image/e #f #f #f))
-(current-events (hash-set (current-events) 'image/e #f))
+(define image/e (event:sink 'image/e (list) append #f))
+(current-events (hash-set (current-events) image/e (list)))
 
 ;; clock event
 (define clock/e (event:source 'clock/e #f #f #f))
-(current-events (hash-set (current-events) 'clock/e #f))
+(current-events (hash-set (current-events) clock/e #f))
 
 ;; key event
 (define key/e (event:source 'key/e #f #f #f))
-(current-events (hash-set (current-events) 'key/e #f))
+(current-events (hash-set (current-events) key/e #f))
 
 ;; mouse event
 (define mouse/e (event:source 'mouse/e #f #f #f))
-(current-events (hash-set (current-events) 'mouse/e #f))
+(current-events (hash-set (current-events) mouse/e #f))
 
 ;;; define-system syntax and identifier bindings
 
@@ -406,7 +406,6 @@
      #:with reduce-name #'(~? given-reduce-name default-reduce-name)
      #:with entities-name #'(~? given-entity-name default-entity-name)
      #'(begin
-         (current-events (hash-set (current-events) 'system-name  #f))
          (define system-name
            (create-system
             'system-name (list evt ...) (list out-evt ...)
@@ -422,7 +421,7 @@
               (define (post-body-fun state-name pre-name reduce-name)
                 (~? (begin post-body ...) (void)))
               (define state-0 (if prior-state prior-state (~? initial-state #f)))
-              (define get-event-vals (λ (ev) (hash-ref (current-events) (event-generic-name ev))))
+              (define get-event-vals (λ (ev) (hash-ref (current-events) ev)))
               (define event-vals (map get-event-vals (filter event-generic? (list evt ...))))
               (define pre-val-0 (pre-body-fun state-0 event-vals))
               (define state-1 (if (not (void? pre-val-0)) pre-val-0 state-0))
@@ -445,18 +444,26 @@
               (define (output-events-fun state-name pre-name map-name reduce-name)
                 (~?
                  (begin
-                   (current-events (hash-set
-                                    (current-events)
-                                    'out-evt
-                                    (~? (begin evt-val-body ...) (void)))) ...)
+                   (current-events
+                    (hash-set
+                     (current-events)
+                     out-evt
+                     ;; combine events
+                     (~? ((event-plus out-evt)
+                          (hash-ref (current-events) out-evt)
+                          (begin evt-val-body ...)) (void)))) ...)
                  (void))(void))
-              (define output-events (output-events-fun state-2 pre-val-0 maps-val reduce-val))
+              (define output-events
+                (if enabled
+                    (output-events-fun state-2 pre-val-0 maps-val reduce-val)
+                    #f))
               ;; persist the end of iteration state
               ;; this helps with checking the world termination condition
               ;; between iterations
               (define new-sys (struct-copy system system-name [state state-2] [enabled enabled]))
               (set! system-name new-sys)
               new-sys)))
+         (current-events (hash-set (current-events) system-name  #f))
          system-name)]))
 
 ;; helper methods

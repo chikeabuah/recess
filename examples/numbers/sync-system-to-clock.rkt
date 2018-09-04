@@ -9,10 +9,12 @@
   ;; there is a binding called x in our state
   ;; initially it has the value of 5
   #:state [x 5]
-  ;; every iteration increment x by 1
-  #:pre _ (displayln x) (sleep 1) (displayln seconds) (+ x 1)
-  ;; this system is enabled as long as x is less than 15
-  #:enabled? (< x 15))
+  ;; every iteration increment x by 5
+  #:pre _ (displayln x) (displayln seconds) (+ x 5)
+  ;; this system is enabled as long as x is less than 100
+  #:enabled? (< x 100)
+  #:out [image/e (list (cons (circle 20 "solid" "blue") (make-posn (* x 3) (* x 2))))]
+  #:out [image/e (list (cons (text (number->string x) 24 "olive") (make-posn 20 20)))])
 
 (module+ main
  (begin-recess

@@ -27,7 +27,7 @@ playing area (random number range) smaller.
 (define SHARKS 5)
 (define FISH 50)
 ;; random number range
-(define OCEAN 10)
+(define OCEAN 20)
 
 (define-component Player)
 (define-component Shark)
@@ -37,6 +37,17 @@ playing area (random number range) smaller.
 
 (define-event shark-guesses/e)
 
+(define (draw-players guesses player-type)
+  (define shape
+    (cond
+      [(eq? player-type "shark") (triangle 10 "solid" "violet")]
+      [(eq? player-type "fish") (circle 10 "solid" "blue")]
+      [(eq? player-type "seaweed") (square 10 "solid" "green")]))
+  (map
+   (λ (guess shape) (cons shape (make-posn (* guess 10) (* guess 10))))
+   guesses
+   (make-list (length guesses) shape)))
+
 ;; writing this example made me think about wanting multiple queries in a system
 ;; or some kind of compound queries
 
@@ -45,7 +56,7 @@ playing area (random number range) smaller.
   #:query e (lookup Player)
   ;; when there are only 5 players left it's all sharks and the rest are seaweed
   #:map mapval (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess) e
-  #:out [shark-guesses/e (map (λ (e) (get e 'Guess)) (filter Shark? mapval))])
+  #:out [shark-guesses/e (map (λ (en) (get en 'Guess)) (filter Shark? mapval))])
 
 (define-system shark-bite
   #:in [seconds clock/e]
@@ -59,11 +70,18 @@ playing area (random number range) smaller.
   #:in [seconds clock/e]
   #:in [on-bite shark-bite]
   #:query e (lookup Fish)
-  #:map _ (when (member (get e 'Guess) (lookup Seaweed)) (- (+ e Seaweed) Fish Player))) 
+  #:map _ (when (member (get e 'Guess) (lookup Seaweed)) (- (+ e Seaweed) Fish Player)))
+
+(define-system vis-players
+  #:in [seconds clock/e]
+  #:in [on-seaweed seaweed-attack]
+  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Shark)) "shark")]
+  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Fish)) "fish")]
+  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Seaweed)) "seaweed")])
 
 (module+ main
   (begin-recess
-    #:systems cross-my-ocean shark-bite seaweed-attack
+    #:systems cross-my-ocean shark-bite seaweed-attack vis-players
     #:initialize
     (add-entities! (list Shark Player Guess) SHARKS)
     (add-entities! (list Fish Player Guess) FISH)
