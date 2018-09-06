@@ -70,7 +70,7 @@
 (define (big-bang-recess-mouse w x y mouse-event)
   (match-define (big-bang-recess-world pe crw lo) w)
   (struct-copy big-bang-recess-world w
-               [pending-events (hash-set pe mouse/e mouse-event)]))
+               [pending-events (hash-set pe mouse/e (make-posn x y))]))
 
 ;; then `on-draw` will just pulls out the recess sink output
 (define (big-bang-draw-recess w)
