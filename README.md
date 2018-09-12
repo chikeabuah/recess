@@ -1,10 +1,24 @@
-# Recess 
-## Racket Entity-Component-System    
-### Design Document    
+# Recess (Racket Entity-Component-System) 
+
+### Goals    
+
+The high-level goal of this project is to explore the development and performance benefits of the ECS paradigm. ECS architectures have seen a recent resurgence in games, simulations, graphics and VR recently (Unity, A-Frame, etc) because developing within this framework has the potential to improve building large systems in the following ways:
+
+- An improved user interface for building more flexible objects (entities).
+- Better performance achieved by taking advantage of opportunities for parallelism and memory compactness.
+
+Our goal is to explore these benefits by developing a specialized syntax and semantics for ECS languages, and benchmarking their performance. In order to achieve this we have outlined the following subgoals:
+
+ - Develop an ECS syntax and framework in Racket (Recess).
+ - Develop an optimized version(s) of Recess to illustrate how we can improve upon the performance.
+ - Develop a semantics model for our optimized ECS language (expressed in PLT Redex).
+ - A JavaScript port of Recess, to make it available on other platforms and explore an implementation in another host language.
   
-This is an attempt to document the desired properties of a general Racket ECS domain specific language. Our goal is to answer the questions: why is ECS design useful, and what code properties will lead to fully realizing its benefits?    
-  
-This ECS design makes use of the following concepts:     
+In doing this we hope to provide definite answers to the questions: why is ECS design useful, and what code properties will lead to fully realizing its benefits?      
+
+### Design Schema  
+This is an attempt to document the desired properties of a general (pure) ECS domain specific language. 
+This ECS design makes use of the following properties:     
 - Entity: Collection of components.
   - Examples: The player, the obstacles, the score display
 - Component: Raw data, no logic.
@@ -26,6 +40,7 @@ This ECS design makes use of the following concepts:
 - The DSL should always follow static scoping rules and is a shallow embedding in Racket.
   
 Below are desired properties regarding individual concepts:    
+
 ### Entity
 - Entities are opaque data types.
 - Entities are simply containers for components. They provide the extensible nature of the ECS pattern. There are no restrictions on what components can be added to an entity.
@@ -134,7 +149,6 @@ Note: the syntax below is still in flux.
 ;; removing a component from an existing entity
 (Rotatable-! ex1)
 ```
-
   
 **Creating/Modifying a reusable archetype**
 ```racket    
@@ -153,7 +167,6 @@ Note: the syntax below is still in flux.
  (CanSoftDrop) (CanHardDrop)
  (Active)) 
  ```
-
   
 **Creating a component**    
 ```racket
