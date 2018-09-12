@@ -11,10 +11,10 @@ Our goal is to explore these benefits by developing a specialized syntax and sem
 
  - Develop an ECS syntax and framework in Racket (Recess).
  - Develop an optimized version(s) of Recess to illustrate how we can improve upon the performance.
- - Develop a operational semantics model for our optimized ECS language (expressed in PLT Redex). The goal here is to formalize and test the guarantees that we are asserting about our ECS language.
+ - Develop a operational semantics model for our optimized ECS language (expressed in PLT Redex). The goal here is to formalize and test the guarantees (see below) that we are asserting about our ECS language.
  - A JavaScript port of Recess, to make it available on other platforms and explore an implementation in another host language.
   
-In doing this we hope to provide definite answers to the questions: why is ECS design useful, and what code properties will lead to fully realizing its benefits?      
+In doing this we hope to provide definitive answers to the questions: why is ECS design useful, and what code properties will lead to fully realizing its benefits?      
 
 ### Design Schema  
 This is an attempt to document the desired properties of a general (pure) ECS domain specific language. 
