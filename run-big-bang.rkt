@@ -36,7 +36,7 @@
     ;; right now this means merging the pending events into the current events
     (define events-so-far
       (hash-set
-       (big-bang-recess-world-pending-events w)
+       pe
        clock/e
        (- (current-seconds) (start-time))))
     (current-events (hash-union (current-events) events-so-far #:combine (λ (old new) new)))
@@ -56,7 +56,6 @@
     ;; get sink events, right now we only care about images
     (define image-outputs (hash-ref (current-events) image/e))
     ;; reset pending events and produce output
-    
     (struct-copy big-bang-recess-world w
                  [pending-events (make-immutable-hasheq)]
                  [last-output image-outputs])))
