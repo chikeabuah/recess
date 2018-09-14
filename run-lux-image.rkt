@@ -70,7 +70,6 @@
   (define (lux-stop-condition stop-func)
     (not (stop-func)))
 
-  
   (struct lux-recess-world
     (g/v pending-events current-recess-world last-output)
     #:methods gen:word
@@ -94,14 +93,13 @@
           (lux-recess-key w e)]
          [else w]))
      (define (word-tick w)
-       (lux-step-world start-time current-events step-world w)
+       (define new-w (lux-step-world start-time current-events step-world w))
        (if (lux-stop-condition stop-func)
-           w
+           new-w
            #f))])
 
   (call-with-chaos
    (make-gui)
    (λ () (fiat-lux (lux-recess-world (make-gui/val) (make-immutable-hasheq) current-world (list)))))
-
 
   #t)
