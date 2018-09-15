@@ -1,11 +1,5 @@
 #lang racket/base
-(require recess/run-lux-image "fishy-systems.rkt")
+(require recess/run-lux-image "fishy-game.rkt")
 
 (module+ main
-  (begin-recess
-    #:systems cross-my-ocean shark-bite seaweed-attack vis-players
-    #:initialize
-    (add-entities! (list Shark Player Guess) SHARKS)
-    (add-entities! (list Fish Player Guess) FISH)
-    #:stop (because #:entities (eq? 0 (length (lookup Fish))))
-    #:run run/lux-image))
+  (play-fishy-game! run/lux-image))
