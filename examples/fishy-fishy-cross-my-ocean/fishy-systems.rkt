@@ -2,6 +2,10 @@
 
 (require recess/run-big-bang)
 
+(provide
+ (all-defined-out))
+
+
 ;; this example implements a RNG simulation of the children's playground game:
 ;; fishy fishy cross my ocean
 ;; the game follows the rules i found here:
@@ -78,12 +82,3 @@ playing area (random number range) smaller.
   #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Shark)) "shark")]
   #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Fish)) "fish")]
   #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Seaweed)) "seaweed")])
-
-(module+ main
-  (begin-recess
-    #:systems cross-my-ocean shark-bite seaweed-attack vis-players
-    #:initialize
-    (add-entities! (list Shark Player Guess) SHARKS)
-    (add-entities! (list Fish Player Guess) FISH)
-    #:stop (because #:entities (eq? 0 (length (lookup Fish))))
-    #:run run/big-bang))
