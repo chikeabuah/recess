@@ -5,14 +5,9 @@
   racket/match
   racket/format
   racket/fixnum
-  racket/gui/base
-  racket/class
   racket/hash
   lang/posn
   lux
-  lux/chaos/gui
-  lux/chaos/gui/val
-  lux/chaos/gui/key
   struct-define)
 
 (provide
@@ -35,7 +30,7 @@
   (define-struct-define obj-define obj)
 
   (define (lux-step-world start-time current-events step-world w)
-    (match-define (lux-recess-world g/v pe crw lo) w)
+    (match-define (lux-recess-world pe crw lo) w)
     (define events-so-far
       (hash-set
        pe
@@ -66,12 +61,12 @@
     (not (stop-func)))
 
   (struct lux-recess-world
-    (g/v pending-events current-recess-world last-output)
+    (pending-events current-recess-world last-output)
     #:methods gen:word
     [(define (word-fps w)
        1.0)
      (define (word-output w)
-       (match-define (lux-recess-world g/v pe crw image-outputs) w)
+       (match-define (lux-recess-world pe crw image-outputs) w)
        (define chars (map car image-outputs))
        (define posns (map cdr image-outputs))
        (define objs
@@ -104,7 +99,6 @@
    (λ ()
      (fiat-lux
       (lux-recess-world
-       (make-gui/val)
        (make-immutable-hasheq)
        current-world
        (list)))))
