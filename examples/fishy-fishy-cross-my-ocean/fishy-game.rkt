@@ -3,9 +3,9 @@
 
 (provide play-fishy-game! (all-from-out "fishy-systems.rkt"))
 
-(define (play-fishy-game! run-mode)
+(define (play-fishy-game! run-mode [vis-mode vis-players])
   (begin-recess
-    #:systems cross-my-ocean shark-bite seaweed-attack vis-players
+    #:systems cross-my-ocean shark-bite seaweed-attack vis-mode
     #:initialize
     (add-entities! (list Shark Player Guess) SHARKS)
     (add-entities! (list Fish Player Guess) FISH)
