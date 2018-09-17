@@ -44,9 +44,20 @@ playing area (random number range) smaller.
 (define (draw-players guesses player-type)
   (define shape
     (cond
-      [(eq? player-type "shark") (triangle 10 "solid" "violet")]
-      [(eq? player-type "fish") (circle 10 "solid" "blue")]
-      [(eq? player-type "seaweed") (square 10 "solid" "green")]))
+      [(eq? player-type 'shark) (triangle 10 "solid" "violet")]
+      [(eq? player-type 'fish) (circle 10 "solid" "blue")]
+      [(eq? player-type 'seaweed) (square 10 "solid" "green")]))
+  (map
+   (λ (guess shape) (cons shape (make-posn (* guess 10) (* guess 10))))
+   guesses
+   (make-list (length guesses) shape)))
+
+(define (draw-players-text guesses player-type)
+  (define shape
+    (cond
+      [(eq? player-type 'shark) #\@]
+      [(eq? player-type 'fish) #\>]
+      [(eq? player-type 'seaweed) #\~]))
   (map
    (λ (guess shape) (cons shape (make-posn (* guess 10) (* guess 10))))
    guesses
@@ -59,7 +70,7 @@ playing area (random number range) smaller.
   #:in [seconds clock/e]
   #:query e (lookup Player)
   ;; when there are only 5 players left it's all sharks and the rest are seaweed
-  #:map mapval (displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess) e
+  #:map mapval #;(displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess) e
   #:out [shark-guesses/e (map (λ (en) (get en 'Guess)) (filter Shark? mapval))])
 
 (define-system shark-bite
@@ -79,6 +90,13 @@ playing area (random number range) smaller.
 (define-system vis-players
   #:in [seconds clock/e]
   #:in [on-seaweed seaweed-attack]
-  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Shark)) "shark")]
-  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Fish)) "fish")]
-  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Seaweed)) "seaweed")])
+  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Shark)) 'shark)]
+  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Fish)) 'fish)]
+  #:out [image/e (draw-players (map (λ (en) (get en 'Guess)) (lookup Seaweed)) 'seaweed)])
+
+(define-system vis-players-as-text
+  #:in [seconds clock/e]
+  #:in [on-seaweed seaweed-attack]
+  #:out [image/e (draw-players-text (map (λ (en) (get en 'Guess)) (lookup Shark)) 'shark)]
+  #:out [image/e (draw-players-text (map (λ (en) (get en 'Guess)) (lookup Fish)) 'fish)]
+  #:out [image/e (draw-players-text (map (λ (en) (get en 'Guess)) (lookup Seaweed)) 'seaweed)])
