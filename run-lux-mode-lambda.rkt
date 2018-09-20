@@ -2,26 +2,71 @@
 (require
   recess
   racket/match
-  racket/fixnum
-  racket/gui/base
-  racket/class
+  racket/flonum
   racket/hash
   lang/posn
-  (prefix-in image: 2htdp/image)
+  #;(prefix-in image: 2htdp/image)
   lux
   lux/chaos/gui
   lux/chaos/gui/val
-  lux/chaos/gui/key)
+  lux/chaos/gui/key
+  mode-lambda
+  mode-lambda/static
+  mode-lambda/backend/gl
+  pict)
 
 (provide
  (all-defined-out)
  (all-from-out
   recess
-  2htdp/image
   lang/posn))
 
+;;;
+;;; SIZES
+;;;
+
+(define W 400)
+(define H 400)
+(define W/2 (/ W 2.))
+(define H/2 (/ H 2.))
+
+;;;
+;;; BITMAPS
+;;;
+
+(define fish-p
+  (standard-fish 10 5 #:color "blue"))
+
+(define shark-p
+  (standard-fish 10 5 #:color "red"))
+
+(define seaweed-p
+  (standard-fish 10 5  #:color "green"))
+
+;;;
+;;; SPRITES
+;;;
+
+(define db (make-sprite-db))
+
+(add-sprite!/value db 'fish  fish-p)
+(add-sprite!/value db 'shark shark-p)
+(add-sprite!/value db 'seaweed seaweed-p)
+
+(define cdb (compile-sprite-db db))
+
+;;;
+;;; LAYERS
+;;;
+
+(define bugl (layer W/2 H/2))    ; gray:       layer 0 ; too see bugs in GL
+(define bgl  (layer W/2 H/2))    ; background: layer 1
+(define ml   (layer W/2 H/2))    ; middle:     layer 2
+(define fgl  (layer W/2 H/2))    ; foreground: layer 3
+(define lc   (vector bugl bgl ml fgl)) ; layer config
+
 ;; iterate through the graph until the world's termination conditions are fulfilled
-(define (run/lux-image args)
+(define (run/lux-mode-lambda args)
   (match-define (list start-time stop-func current-events step-world current-world) args)
 
   ;; then `on-tick` takes those events, plus a freshly generated clock event and runs the
@@ -77,10 +122,21 @@
        1.0)
      (define (word-output w)
        (match-define (lux-recess-world g/v pe crw image-outputs) w)
-       (define images (map car image-outputs))
+       (define sprite-syms (map car image-outputs))
        (define posns (map cdr image-outputs))
-       (define output (image:place-images images posns (image:empty-scene 400 200)))
-       (g/v output))
+       (define dynamic
+         (map
+          (λ (sprite-sym posn)
+            (sprite
+             (->fl (posn-x posn))
+             (->fl (posn-y posn))
+             (sprite-idx cdb sprite-sym) #:layer 3))
+          sprite-syms
+          posns))
+       (define rendering-states->draw (stage-draw/dc cdb W H (vector-length lc)))
+       (define static (list))
+       (define draw (rendering-states->draw lc static dynamic))
+       draw)
      (define (word-event w e)
        (match-define (lux-recess-world g/v pe crw lo) w)
        (define closed? #f)
@@ -97,7 +153,13 @@
            #f))])
 
   (call-with-chaos
-   (make-gui)
-   (λ () (fiat-lux (lux-recess-world (make-gui/val) (make-immutable-hasheq) current-world (list)))))
+   (make-gui #:mode gui-mode)
+   (λ ()
+     (fiat-lux
+      (lux-recess-world
+       (make-gui/val)
+       (make-immutable-hasheq)
+       current-world
+       (list)))))
 
   #t)

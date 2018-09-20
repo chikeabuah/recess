@@ -63,6 +63,12 @@ playing area (random number range) smaller.
    guesses
    (make-list (length guesses) shape)))
 
+(define (draw-players-mode-lambda guesses player-type)
+  (map
+   (λ (guess shape) (cons shape (make-posn (* guess 10) (* guess 10))))
+   guesses
+   (make-list (length guesses) player-type)))
+
 ;; writing this example made me think about wanting multiple queries in a system
 ;; or some kind of compound queries
 
@@ -100,3 +106,10 @@ playing area (random number range) smaller.
   #:out [image/e (draw-players-text (map (λ (en) (get en 'Guess)) (lookup Shark)) 'shark)]
   #:out [image/e (draw-players-text (map (λ (en) (get en 'Guess)) (lookup Fish)) 'fish)]
   #:out [image/e (draw-players-text (map (λ (en) (get en 'Guess)) (lookup Seaweed)) 'seaweed)])
+
+(define-system vis-players-as-sprites
+  #:in [seconds clock/e]
+  #:in [on-seaweed seaweed-attack]
+  #:out [image/e (draw-players-mode-lambda (map (λ (en) (get en 'Guess)) (lookup Shark)) 'shark)]
+  #:out [image/e (draw-players-mode-lambda (map (λ (en) (get en 'Guess)) (lookup Fish)) 'fish)]
+  #:out [image/e (draw-players-mode-lambda (map (λ (en) (get en 'Guess)) (lookup Seaweed)) 'seaweed)])
