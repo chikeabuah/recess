@@ -72,7 +72,7 @@
   ;; then `on-tick` takes those events, plus a freshly generated clock event and runs the
   ;; simulation, records the output in the world struct
   (define (lux-step-world start-time current-events step-world w)
-    (match-define (lux-recess-world g/v pe crw lo) w)
+    (match-define (lux-recess-world rs->d pe crw lo) w)
     ;; sync up with new things that have happened
     ;; right now this means merging the pending events into the current events
     (define events-so-far
@@ -103,12 +103,12 @@
 
   ;; `on-key` and `on-mouse` events record something inside a custom made world struct
   (define (lux-recess-key w key-event)
-    (match-define (lux-recess-world g/v pe crw lo) w)
+    (match-define (lux-recess-world rs->d pe crw lo) w)
     (struct-copy lux-recess-world w
                  [pending-events (hash-set pe key/e key-event)]))
 
   (define (lux-recess-mouse w x y mouse-event)
-    (match-define (lux-recess-world g/v pe crw lo) w)
+    (match-define (lux-recess-world rs->d pe crw lo) w)
     (struct-copy lux-recess-world w
                  [pending-events (hash-set pe mouse/e (make-posn x y))]))
 
@@ -121,7 +121,7 @@
     [(define (word-fps w)
        1.0)
      (define (word-output w)
-       (match-define (lux-recess-world g/v pe crw image-outputs) w)
+       (match-define (lux-recess-world rendering-states->draw pe crw image-outputs) w)
        (define sprite-syms (map car image-outputs))
        (define posns (map cdr image-outputs))
        (define dynamic
@@ -133,12 +133,11 @@
              (sprite-idx cdb sprite-sym) #:layer 3))
           sprite-syms
           posns))
-       (define rendering-states->draw (stage-draw/dc cdb W H (vector-length lc)))
        (define static (list))
        (define draw (rendering-states->draw lc static dynamic))
        draw)
      (define (word-event w e)
-       (match-define (lux-recess-world g/v pe crw lo) w)
+       (match-define (lux-recess-world rs->d pe crw lo) w)
        (define closed? #f)
        (cond
          [(eq? e 'close)
@@ -157,7 +156,7 @@
    (λ ()
      (fiat-lux
       (lux-recess-world
-       (make-gui/val)
+       (stage-draw/dc cdb W H (vector-length lc))
        (make-immutable-hasheq)
        current-world
        (list)))))
