@@ -32,6 +32,18 @@
   #:map pos (get en 'Position)
   #:out [image/e (draw-entities pos 'ellipse-2)])
 
+(define-system enemy-impact
+  #:query en (lookup Enemy Alive)
+  #:map _
+  (when
+      (close-enough? .5 (get en 'Position) (get-entity-posns (lookup Bullet)))
+    (- (+ en Dead) Alive)))
+
+(define-system enemy-death
+  #:in [on-impact enemy-impact]
+  #:query en (lookup Enemy Dead)
+  #:map _ (remove-entity! en))
+
 (define-system bullet-motion
   #:query bullet (lookup Bullet)
   #:map pos (set! bullet (move-bullet (get bullet 'Position)) 'Position))
@@ -47,12 +59,15 @@
   #:post (h-align-shot (list Bullet Position) key (car (lookup Player))))
 
 (begin-recess
-  #:systems render-player move-player bullet-motion render-bullets shoot render-enemies
+  #:systems
+  render-player render-bullets 
+  move-player bullet-motion shoot
+  render-enemies enemy-impact enemy-death
   #:initialize
   (add-entity! (list Player Position))
   (let ([enemies (list (make-posn 160 100) (make-posn 240 100))])
     (for-each
-     (λ (pos) (add-entity! (list Enemy (create-component 'Position pos)))) 
+     (λ (pos) (add-entity! (list Enemy Alive (create-component 'Position pos)))) 
     enemies))
   #:stop #f
   #:run run/lux-mode-lambda)

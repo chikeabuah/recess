@@ -32,3 +32,20 @@
   (define player-posn (get player 'Position))
   (when (and key (eq? (key-event-code key) #\s))
     (set! (add-entity! bullet) player-posn 'Position)))
+
+(define (get-entity-posns ents)
+  (map
+   (λ (ent) (get ent 'Position))
+   ents))
+
+(define (distance a b)
+  (sqrt
+   (+
+    (expt (- (posn-x a) (posn-x b)) 2)
+    (expt (- (posn-y a) (posn-y b)) 2))))
+
+(define (close-enough? thresh pos posns)
+  (define poslst (make-list (length posns) pos))
+  (define distances (map distance poslst posns))
+  (displayln distances)
+  (ormap (λ (d) (< d thresh)) distances))
