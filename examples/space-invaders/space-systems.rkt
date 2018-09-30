@@ -17,45 +17,37 @@
 (define-component FireDelay 3)
 
 (define-system move-player
-  #:in [seconds clock/e]
   #:in [key key/e]
   #:query player (lookup Player)
   #:map pos (get player 'Position) (move-player! player (and key (key-event-code key))))
 
 (define-system render-player
-  #:in [seconds clock/e]
   #:in [on-move move-player]
   #:query player (lookup Player)
   #:map pos (get player 'Position)
   #:out [image/e (draw-entities pos 'ellipse-0)])
 
-#;(define-system render-enemies
-  #:in [seconds clock/e]
-  #:in [on-move move-player]
-  #:query player (lookup Player)
-  #:map pos (get player 'Position)
-  #:out [image/e (draw-players pos)])
+(define-system render-enemies
+  #:query en (lookup Enemy)
+  #:map pos (get en 'Position)
+  #:out [image/e (draw-entities pos 'ellipse-2)])
 
 (define-system bullet-motion
-  #:in [seconds clock/e]
   #:query bullet (lookup Bullet)
   #:map pos (set! bullet (move-bullet (get bullet 'Position)) 'Position))
 
 (define-system render-bullets
-  #:in [seconds clock/e]
   #:in [on-motion bullet-motion]
   #:query bullet (lookup Bullet)
   #:map pos (get bullet 'Position)
-  ;; for now render player and bullets the same
   #:out [image/e (draw-entities pos 'ellipse-1)])
 
 (define-system shoot
-  #:in [seconds clock/e]
   #:in [key key/e]
   #:post (h-align-shot (list Bullet Position) key (car (lookup Player))))
 
 (begin-recess
-  #:systems render-player move-player bullet-motion render-bullets shoot
+  #:systems render-player move-player bullet-motion render-bullets shoot render-enemies
   #:initialize
   (add-entity! (list Player Position))
   (let ([enemies (list (make-posn 160 100) (make-posn 240 100))])
