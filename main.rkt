@@ -418,7 +418,8 @@
               (define (enabled-body-fun state-name pre-name evts)
                 (match-define (list evt-name ...) evts)
                 (~? (and enabled?-body ...) #t))
-              (define (post-body-fun state-name pre-name reduce-name)
+              (define (post-body-fun state-name pre-name reduce-name evts)
+                (match-define (list evt-name ...) evts)
                 (~? (begin post-body ...) (void)))
               (define state-0 (if prior-state prior-state (~? initial-state #f)))
               (define get-event-vals (λ (ev) (hash-ref (current-events) ev)))
@@ -439,7 +440,7 @@
                                 (map-body-fun state-1 pre-val-0 entities event-vals)
                                 (list)))
               (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
-              (define post (post-body-fun state-1 pre-val-0 reduce-val))
+              (define post (post-body-fun state-1 pre-val-0 reduce-val event-vals))
               (define state-2 (if (not (void? post)) post state-1))
               (define (output-events-fun state-name pre-name map-name reduce-name)
                 (~?

@@ -1,5 +1,5 @@
 #lang racket/base
-(require recess/run-lux-mode-lambda)
+(require recess/run-lux-mode-lambda "helpers.rkt")
 
 (define-component Position (make-posn 200 350))
 (define-component Friendly)
@@ -16,43 +16,39 @@
 (define-component MoveRate 3)
 (define-component FireDelay 3)
 
-;; assuming there can be multiple players at once
-(define (draw-players posns)
-  (map
-   (λ (position) (cons 'ellipse position))
-   posns))
-
-(define (move-player player key)
-  (displayln key)
-  (define k
-    (if (and key (not (pair? key)))
-    key
-    #f)) 
-  (displayln (eq? 'left k))
-  (define offset 
-    (cond 
-      [(eq? k 'left) -20]
-      [(eq? k 'right) 20]
-      [else 0]))
-  (define player-posn (get player 'Position))
-  (define new-posn (make-posn (+ (posn-x player-posn) offset) (posn-y player-posn)))
-  (set! player new-posn 'Position))
-
-(define-system render-players
+(define-system move-player
   #:in [seconds clock/e]
+  #:in [key key/e]
+  #:query player (lookup Player)
+  #:map pos (get player 'Position) (move-player! player (and key (key-event-code key))))
+
+(define-system render-player
+  #:in [seconds clock/e]
+  #:in [on-move move-player]
   #:query player (lookup Player)
   #:map pos (get player 'Position)
   #:out [image/e (draw-players pos)])
 
+(define-system bullet-motion
+  #:in [seconds clock/e]
+  #:query bullet (lookup Bullet)
+  #:map pos (set! bullet (move-bullet (get bullet 'Position)) 'Position))
 
-(define-system move-player-1
+(define-system render-bullets
+  #:in [seconds clock/e]
+  #:in [on-motion bullet-motion]
+  #:query bullet (lookup Bullet)
+  #:map pos (get bullet 'Position)
+  ;; for now render player and bullets the same
+  #:out [image/e (draw-players pos)])
+
+(define-system shoot
   #:in [seconds clock/e]
   #:in [key key/e]
-  #:query player (lookup Player)
-  #:map pos (get player 'Position) (move-player player (and key (key-event-code key))))
+  #:post (h-align-shot (list Bullet Position) key (car (lookup Player))))
 
 (begin-recess
-  #:systems render-players move-player-1
+  #:systems render-player move-player bullet-motion render-bullets shoot
   #:initialize (add-entity! (list Player Position))
   #:stop #f
   #:run run/lux-mode-lambda)
