@@ -134,7 +134,7 @@
     (g/v pending-events current-recess-world last-output)
     #:methods gen:word
     [(define (word-fps w)
-       1.0)
+       20.0)
      (define (word-output w)
        (match-define (lux-recess-world rendering-states->draw pe crw image-outputs) w)
        (define sprite-syms (map car image-outputs))

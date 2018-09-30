@@ -22,6 +22,22 @@
    (λ (position) (cons 'ellipse position))
    posns))
 
+(define (move-player player key)
+  (displayln key)
+  (define k
+    (if (and key (not (pair? key)))
+    key
+    #f)) 
+  (displayln (eq? 'left k))
+  (define offset 
+    (cond 
+      [(eq? k 'left) -20]
+      [(eq? k 'right) 20]
+      [else 0]))
+  (define player-posn (get player 'Position))
+  (define new-posn (make-posn (+ (posn-x player-posn) offset) (posn-y player-posn)))
+  (set! player new-posn 'Position))
+
 (define-system render-players
   #:in [seconds clock/e]
   #:query player (lookup Player)
@@ -33,7 +49,7 @@
   #:in [seconds clock/e]
   #:in [key key/e]
   #:query player (lookup Player)
-  #:map pos (get player 'Position) (display (and key (key-event-code key))))
+  #:map pos (get player 'Position) (move-player player (and key (key-event-code key))))
 
 (begin-recess
   #:systems render-players move-player-1
