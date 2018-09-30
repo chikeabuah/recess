@@ -27,6 +27,13 @@
   #:in [on-move move-player]
   #:query player (lookup Player)
   #:map pos (get player 'Position)
+  #:out [image/e (draw-entities pos 'ellipse-0)])
+
+#;(define-system render-enemies
+  #:in [seconds clock/e]
+  #:in [on-move move-player]
+  #:query player (lookup Player)
+  #:map pos (get player 'Position)
   #:out [image/e (draw-players pos)])
 
 (define-system bullet-motion
@@ -40,7 +47,7 @@
   #:query bullet (lookup Bullet)
   #:map pos (get bullet 'Position)
   ;; for now render player and bullets the same
-  #:out [image/e (draw-players pos)])
+  #:out [image/e (draw-entities pos 'ellipse-1)])
 
 (define-system shoot
   #:in [seconds clock/e]
@@ -49,6 +56,11 @@
 
 (begin-recess
   #:systems render-player move-player bullet-motion render-bullets shoot
-  #:initialize (add-entity! (list Player Position))
+  #:initialize
+  (add-entity! (list Player Position))
+  (let ([enemies (list (make-posn 160 100) (make-posn 240 100))])
+    (for-each
+     (λ (pos) (add-entity! (list Enemy (create-component 'Position pos)))) 
+    enemies))
   #:stop #f
   #:run run/lux-mode-lambda)

@@ -4,6 +4,8 @@
   racket/match
   racket/flonum
   racket/hash
+  racket/draw
+  racket/class
   lang/posn
   #;(prefix-in image: 2htdp/image)
   lux
@@ -24,6 +26,13 @@
   lux/chaos/gui/val
   lux/chaos/gui/key
   lang/posn))
+
+(define COLORS (send the-color-database get-names))
+
+(define (random-color)
+  (list-ref COLORS (random (length COLORS))))
+
+(define rc random-color)
 
 ;;;
 ;;; SIZES
@@ -47,8 +56,19 @@
 (define seaweed-p
   (standard-fish 10 5  #:color "green"))
 
-(define ellipse-p
-  (disk 40 #:color "Chartreuse" #:border-color "Medium Aquamarine" #:border-width 5))
+(define (ellipse-maker c)
+  (disk 40 #:color (car c) #:border-color (cdr c) #:border-width 5))
+
+;; make 10 random looking ellipses
+(define ellipse10
+  (map
+   ellipse-maker
+   (map
+    (λ (p) (cons (list-ref COLORS (car p)) (list-ref COLORS (cdr p)))) 
+    (map
+     (λ (n m) (cons (random n) (random m)))
+     (make-list 10 (length COLORS))
+     (make-list 10 (length COLORS))))))  
 
 ;;;
 ;;; SPRITES
@@ -59,7 +79,10 @@
 (add-sprite!/value db 'fish  fish-p)
 (add-sprite!/value db 'shark shark-p)
 (add-sprite!/value db 'seaweed seaweed-p)
-(add-sprite!/value db 'ellipse ellipse-p)
+(for-each
+ (λ (ell i) 
+   (add-sprite!/value db (format-symbol "ellipse-~a" (string->symbol (number->string i))) ell))
+ ellipse10 (range 10))
 
 
 (define cdb (compile-sprite-db db))

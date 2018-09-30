@@ -6,10 +6,9 @@
 
 ;; helpers
 
-;; assuming there can be multiple players
-(define (draw-players posns)
+(define (draw-entities posns sprite-sym)
   (map
-   (λ (position) (cons 'ellipse position))
+   (λ (position) (cons sprite-sym position))
    posns))
 
 (define (move-player! player key)
