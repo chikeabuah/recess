@@ -19,13 +19,17 @@
  (all-defined-out)
  (all-from-out
   recess
+  lux
+  lux/chaos/gui
+  lux/chaos/gui/val
+  lux/chaos/gui/key
   lang/posn))
 
 ;;;
 ;;; SIZES
 ;;;
 
-(define W 400)
+(define W 440)
 (define H 400)
 (define W/2 (/ W 2.))
 (define H/2 (/ H 2.))
@@ -43,6 +47,9 @@
 (define seaweed-p
   (standard-fish 10 5  #:color "green"))
 
+(define ellipse-p
+  (disk 40 #:color "Chartreuse" #:border-color "Medium Aquamarine" #:border-width 5))
+
 ;;;
 ;;; SPRITES
 ;;;
@@ -52,6 +59,8 @@
 (add-sprite!/value db 'fish  fish-p)
 (add-sprite!/value db 'shark shark-p)
 (add-sprite!/value db 'seaweed seaweed-p)
+(add-sprite!/value db 'ellipse ellipse-p)
+
 
 (define cdb (compile-sprite-db db))
 
@@ -81,25 +90,31 @@
        clock/e
        (- (current-seconds) (start-time))))
     (current-events (hash-union (current-events) events-so-far #:combine (λ (old new) new)))
-    ;; need to reset sink events
-    (current-events
-     (make-immutable-hasheq
-      (map
-       (λ (event-assoc)
-         (match-define (cons ev val) event-assoc)
-         (if (event:sink? ev)
-             (cons ev (event-zero ev))
-             event-assoc))
-       (hash->list (current-events)))))
+    
+    (define (reset-events reset?)
+      (current-events
+       (make-immutable-hasheq
+        (map
+         (λ (event-assoc)
+           (match-define (cons ev val) event-assoc)
+           (if (reset? ev)
+               (cons ev (event-zero ev))
+               event-assoc))
+         (hash->list (current-events))))))
+    
+    ;; need to reset sink events (and key)
+    (reset-events (λ (ev) (event:sink? ev)))
     ;;then step
     (displayln "executing recess graph...")
     (step-world)
+    (reset-events (λ (ev) (eq? key/e ev)))
     ;; get sink events, right now we only care about images
     (define image-outputs (hash-ref (current-events) image/e))
     ;; reset pending events and produce output
     (struct-copy lux-recess-world w
                  [pending-events (make-immutable-hasheq)]
                  [last-output image-outputs]))
+
 
   ;; `on-key` and `on-mouse` events record something inside a custom made world struct
   (define (lux-recess-key w key-event)
