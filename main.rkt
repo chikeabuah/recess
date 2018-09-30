@@ -79,6 +79,12 @@
   (when (current-world) (current-world (add-entity-to-world e (current-world))))
   e)
 
+(define (remove-entity! e)
+  (when
+      (current-world)
+    (current-world (remove-entity-from-world e (current-world))))
+  e)
+
 ;; check if it's a component with data or not
 (define (get-cmpnt-val cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #t))
 
@@ -110,9 +116,9 @@
   (let ([current-entities (world-entities wrld)])
     (struct-copy world wrld [entities (hash-set current-entities (entity-id e) e)])))
 
-(define (remove-entity-from-world! e wrld)
+(define (remove-entity-from-world e wrld)
   (let ([current-entities (world-entities wrld)])
-    (struct-copy world wrld [entities (hash-remove current-entities (entity-id e) e)])))
+    (struct-copy world wrld [entities (hash-remove current-entities (entity-id e))])))
 
 (define (add-components-to-entity e cmpnts)
   (define new-e
@@ -418,7 +424,8 @@
               (define (enabled-body-fun state-name pre-name evts)
                 (match-define (list evt-name ...) evts)
                 (~? (and enabled?-body ...) #t))
-              (define (post-body-fun state-name pre-name reduce-name)
+              (define (post-body-fun state-name pre-name reduce-name evts)
+                (match-define (list evt-name ...) evts)
                 (~? (begin post-body ...) (void)))
               (define state-0 (if prior-state prior-state (~? initial-state #f)))
               (define get-event-vals (λ (ev) (hash-ref (current-events) ev)))
@@ -439,7 +446,7 @@
                                 (map-body-fun state-1 pre-val-0 entities event-vals)
                                 (list)))
               (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
-              (define post (post-body-fun state-1 pre-val-0 reduce-val))
+              (define post (post-body-fun state-1 pre-val-0 reduce-val event-vals))
               (define state-2 (if (not (void? post)) post state-1))
               (define (output-events-fun state-name pre-name map-name reduce-name)
                 (~?
@@ -463,6 +470,7 @@
               (define new-sys (struct-copy system system-name [state state-2] [enabled enabled]))
               (set! system-name new-sys)
               new-sys)))
+         (set! all-defined-systems (append all-defined-systems (list system-name)))
          (current-events (hash-set (current-events) system-name  #f))
          system-name)]))
 
@@ -470,8 +478,7 @@
 
 ;; stub for a way to add all the systems to a world
 ;; without listing them all
-(define (all-defined-systems)
-  'all-defined-systems)
+(define all-defined-systems (list))
 
 ;; get all the entities in the current world that match this archetype
 ;; the arguments are: first component, rest of the components

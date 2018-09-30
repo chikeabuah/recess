@@ -4,6 +4,8 @@
   racket/match
   racket/flonum
   racket/hash
+  racket/draw
+  racket/class
   lang/posn
   #;(prefix-in image: 2htdp/image)
   lux
@@ -19,13 +21,24 @@
  (all-defined-out)
  (all-from-out
   recess
+  lux
+  lux/chaos/gui
+  lux/chaos/gui/val
+  lux/chaos/gui/key
   lang/posn))
+
+(define COLORS (send the-color-database get-names))
+
+(define (random-color)
+  (list-ref COLORS (random (length COLORS))))
+
+(define rc random-color)
 
 ;;;
 ;;; SIZES
 ;;;
 
-(define W 400)
+(define W 440)
 (define H 400)
 (define W/2 (/ W 2.))
 (define H/2 (/ H 2.))
@@ -43,6 +56,20 @@
 (define seaweed-p
   (standard-fish 10 5  #:color "green"))
 
+(define (ellipse-maker c)
+  (disk 40 #:color (car c) #:border-color (cdr c) #:border-width 5))
+
+;; make 10 random looking ellipses
+(define ellipse10
+  (map
+   ellipse-maker
+   (map
+    (λ (p) (cons (list-ref COLORS (car p)) (list-ref COLORS (cdr p)))) 
+    (map
+     (λ (n m) (cons (random n) (random m)))
+     (make-list 10 (length COLORS))
+     (make-list 10 (length COLORS))))))  
+
 ;;;
 ;;; SPRITES
 ;;;
@@ -52,6 +79,11 @@
 (add-sprite!/value db 'fish  fish-p)
 (add-sprite!/value db 'shark shark-p)
 (add-sprite!/value db 'seaweed seaweed-p)
+(for-each
+ (λ (ell i) 
+   (add-sprite!/value db (format-symbol "ellipse-~a" (string->symbol (number->string i))) ell))
+ ellipse10 (range 10))
+
 
 (define cdb (compile-sprite-db db))
 
@@ -81,25 +113,31 @@
        clock/e
        (- (current-seconds) (start-time))))
     (current-events (hash-union (current-events) events-so-far #:combine (λ (old new) new)))
-    ;; need to reset sink events
-    (current-events
-     (make-immutable-hasheq
-      (map
-       (λ (event-assoc)
-         (match-define (cons ev val) event-assoc)
-         (if (event:sink? ev)
-             (cons ev (event-zero ev))
-             event-assoc))
-       (hash->list (current-events)))))
+    
+    (define (reset-events reset?)
+      (current-events
+       (make-immutable-hasheq
+        (map
+         (λ (event-assoc)
+           (match-define (cons ev val) event-assoc)
+           (if (reset? ev)
+               (cons ev (event-zero ev))
+               event-assoc))
+         (hash->list (current-events))))))
+    
+    ;; need to reset sink events (and key)
+    (reset-events (λ (ev) (event:sink? ev)))
     ;;then step
     (displayln "executing recess graph...")
     (step-world)
+    (reset-events (λ (ev) (eq? key/e ev)))
     ;; get sink events, right now we only care about images
     (define image-outputs (hash-ref (current-events) image/e))
     ;; reset pending events and produce output
     (struct-copy lux-recess-world w
                  [pending-events (make-immutable-hasheq)]
                  [last-output image-outputs]))
+
 
   ;; `on-key` and `on-mouse` events record something inside a custom made world struct
   (define (lux-recess-key w key-event)
@@ -119,7 +157,7 @@
     (g/v pending-events current-recess-world last-output)
     #:methods gen:word
     [(define (word-fps w)
-       1.0)
+       60.0)
      (define (word-output w)
        (match-define (lux-recess-world rendering-states->draw pe crw image-outputs) w)
        (define sprite-syms (map car image-outputs))
