@@ -15,7 +15,7 @@
   ;; we know there will only be one
   #:query e (lookup Count)
   ;; every iteration increment e by 1 and print it 
-  #:map m (set! e (+ (get e 'Count) 1)) (displayln (get e 'Count)) (get e 'Count)
+  #:map m (~>! e (+ (get e 'Count) 1)) (displayln (get e 'Count)) (get e 'Count)
   #:out [image/e (list (cons (text (number->string (car m)) 24 "olive") (make-posn 20 20)))])
 
 (module+ main

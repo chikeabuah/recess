@@ -21,7 +21,7 @@
   ;; query for all entities that have the component/archetype: Count
   ;; we know there will only be one so bind it to e
   #:query e (lookup Count)
-  #:map _ (set! e (+ (get e 'Count) y)) (display (get e 'Count)))
+  #:map _ (~>! e (+ (get e 'Count) y)) (display (get e 'Count)))
 
 (module+ main
  (begin-recess

@@ -15,7 +15,7 @@
   #:enabled? (< seconds 10)
   #:query e (lookup Count)
   ;; every iteration increment subtract 5 from e
-  #:map m (displayln (get e 'Count)) (set! e (- (get e 'Count) 5))
+  #:map m (displayln (get e 'Count)) (~>! e (- (get e 'Count) 5))
   #:out [image/e
          (list (cons (text (number->string (get (car m) 'Count)) 24 "olive") (make-posn 100 50)))])
 
@@ -27,7 +27,7 @@
   #:enabled? (< seconds 15)
   #:query e (lookup Count)
   ;; every iteration multiply e by 5
-  #:map m (displayln (get e 'Count)) (set! e (* (get e 'Count) 5))
+  #:map m (displayln (get e 'Count)) (~>! e (* (get e 'Count) 5))
   #:out [image/e
          (list (cons (text (number->string (get (car m) 'Count)) 24 "olive") (make-posn 250 50)))])
 
