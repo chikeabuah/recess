@@ -47,5 +47,4 @@
 (define (close-enough? thresh pos posns)
   (define poslst (make-list (length posns) pos))
   (define distances (map distance poslst posns))
-  (displayln distances)
   (ormap (λ (d) (< d thresh)) distances))

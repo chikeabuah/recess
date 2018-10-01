@@ -22,6 +22,9 @@
 (define (~>! id expr [ref (λ (x) #f)])
   (set-entity! id expr ref))
 
+(define (~~>! id hsh)
+  (batch-set-entity! id hsh))
+
 ;; this is an attempt to simplify modifying entities
 (define (+ ent . cmpnts)
   (cond [(entity? ent) (add-components-to-entity ent cmpnts)]
@@ -83,7 +86,7 @@
   e)
 
 ;; check if it's a component with data or not
-(define (get-cmpnt-val cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #t))
+(define (get-cmpnt-val cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #f))
 
 (define (make-cmpnt-id-val-pair cmpnt) (cons (component-id cmpnt) (get-cmpnt-val cmpnt)))
 
@@ -105,6 +108,14 @@
       [(eq? cmpnts-length 1) (hash-set cmpnts-hash (first keys) expr)]
       [ref (hash-set cmpnts-hash ref expr)]
       [else (raise "recess: attempt to set entity was ambiguous")]))
+  (define new-e (entity (entity-id e) new-cmpnts-hash))
+  (set-current-world-entity new-e)
+  new-e)
+
+(define (batch-set-entity! e hsh)
+  (define cmpnts-hash (entity-components e))
+  (define new-cmpnts-hash
+    (hash-union cmpnts-hash hsh #:combine (λ (old new) new)))
   (define new-e (entity (entity-id e) new-cmpnts-hash))
   (set-current-world-entity new-e)
   new-e)

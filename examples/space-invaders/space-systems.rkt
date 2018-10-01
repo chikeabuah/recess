@@ -1,7 +1,17 @@
 #lang racket/base
+
 (require recess/run-lux-mode-lambda "helpers.rkt")
 
 (define-component Position (make-posn 200 350))
+;; in space invaders enemies initially cycle by some offset around a fixed axis
+;; when the player clears out enough columns the remaining enemies
+;; begin to span the entire screen very quickly (axis is now centre of screen)
+(define-component Axis)
+(define-component MaxOffset 40)
+(define-component CurrentOffset 0)
+;; enemy direction flag
+(define-component Polarity #t)
+(define-component FirstWall #f)
 (define-component Friendly)
 (define-component Enemy)
 (define-component Neutral)
@@ -16,6 +26,10 @@
 (define-component MoveRate 3)
 (define-component FireDelay 3)
 
+;; design thoughts
+;; if we can build this game without needing state in any of the systems it would be
+;; more pure/functional in a sense
+
 (define-system move-player
   #:in [key key/e]
   #:query player (lookup Player)
@@ -27,12 +41,60 @@
   #:map pos (get player 'Position)
   #:out [image/e (draw-entities pos 'ellipse-0)])
 
+(define-system enemy-horizontal-motion
+  #:query en (lookup Enemy Alive)
+  ;; increment offset, move in some direction
+  #:map _ (move-enemy-h en))
+
 (define-system render-enemies
+  #:in [on-h-move enemy-horizontal-motion]
   #:query en (lookup Enemy)
   #:map pos (get en 'Position)
   #:out [image/e (draw-entities pos 'ellipse-2)])
 
+;; an approach to programming the enemies motion
+;; two alternating systems - horizontal and vertical
+
+;; the vertical system should only be enabled when the horizontal
+;; system has moved up to the offset amount
+;; so the vertical system can depend on the horizontal and listen for a signal
+
+;; we're either moving left or right so binary state
+
+(define (move-enemy-h en)
+  (begin
+    (define current-max-offset (get en 'MaxOffset))
+    (define current-offset (get en 'CurrentOffset))
+    (define axis (get en 'Axis))
+    (define polarity (get en 'Polarity))
+    (define pos (get en 'Position))
+    (define fw (get en 'FirstWall))
+    (define switch? (<= current-max-offset current-offset))
+    (displayln current-offset)
+    (displayln switch?)
+    (displayln polarity)
+    (when switch?
+      (set! polarity (not polarity))
+      (set! current-offset 0))
+    (displayln polarity)
+    ;; we hit our first wall: double max offset
+    (when (and switch? (not fw))
+      (set! current-max-offset (* current-max-offset 2))
+      (set! fw (not fw)))
+    (set! current-offset (+ current-offset 2))
+    (if polarity   
+        (set! pos (make-posn (+ (posn-x pos) 2) (posn-y pos)))
+        (set! pos (make-posn (- (posn-x pos) 2) (posn-y pos))))
+    (~~>! en (make-immutable-hasheq
+              (list
+               (cons 'MaxOffset current-max-offset  )
+               (cons 'Polarity polarity  )
+               (cons 'FirstWall fw  )
+               (cons 'Position pos  )
+               (cons 'CurrentOffset current-offset  ))))))
+
 (define-system enemy-impact
+  #:in [on-move enemy-horizontal-motion]
   #:query en (lookup Enemy Alive)
   #:map _
   (when
@@ -62,12 +124,18 @@
   #:systems
   render-player render-bullets 
   move-player bullet-motion shoot
-  render-enemies enemy-impact enemy-death
+  render-enemies enemy-impact enemy-death enemy-horizontal-motion
   #:initialize
+  ;; add player(s)
   (add-entity! (list Player Position))
+  ;; add enemies
   (let ([enemies (list (make-posn 160 100) (make-posn 240 100))])
     (for-each
-     (λ (pos) (add-entity! (list Enemy Alive (create-component 'Position pos)))) 
-    enemies))
+     (λ (pos)
+       (add-entity!
+        (list Enemy Alive CurrentOffset MaxOffset Polarity FirstWall
+              (create-component 'Position pos)
+              (create-component 'Axis pos)))) 
+     enemies))
   #:stop #f
   #:run run/lux-mode-lambda)
