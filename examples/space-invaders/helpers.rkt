@@ -6,6 +6,28 @@
 
 ;; helpers
 
+;; enemy grid
+
+(define top-left (make-posn 40 40))
+(define horizontal (map (λ (n) (* n 80)) (cdr (range 9))))
+(define top-row-temp (make-list 8 top-left))
+(define top-row
+  (map
+   (λ (p x-offset) (make-posn (+ x-offset (posn-x p)) (posn-y p)))
+   top-row-temp
+   horizontal))
+(define (offset-row row y-offset)
+  (map
+   (λ (pos)
+     (make-posn (posn-x pos) (+ (posn-y pos) y-offset)))
+   row))
+
+(define enemy-matrix
+  (map
+   (λ (row y-offset) (offset-row row y-offset))
+   (make-list 5 top-row)
+   (map (λ (n) (* n 80)) (cdr (range 6)))))
+
 (define (draw-entities posns sprite-sym)
   (map
    (λ (position) (cons sprite-sym position))
@@ -26,7 +48,7 @@
   (~>! player new-posn 'Position))
 
 (define (move-bullet pos)
-  (make-posn (posn-x pos) (- (posn-y pos) 2)))
+  (make-posn (posn-x pos) (- (posn-y pos) 5)))
 
 (define (h-align-shot bullet key player)
   (define player-posn (get player 'Position))

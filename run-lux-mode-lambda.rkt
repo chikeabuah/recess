@@ -38,8 +38,8 @@
 ;;; SIZES
 ;;;
 
-(define W 440)
-(define H 400)
+(define W 720)
+(define H 640)
 (define W/2 (/ W 2.))
 (define H/2 (/ H 2.))
 

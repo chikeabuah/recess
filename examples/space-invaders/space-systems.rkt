@@ -2,7 +2,7 @@
 
 (require recess/run-lux-mode-lambda "helpers.rkt")
 
-(define-component Position (make-posn 200 350))
+(define-component Position (make-posn 340 600))
 ;; in space invaders enemies initially cycle by some offset around a fixed axis
 ;; when the player clears out enough columns the remaining enemies
 ;; begin to span the entire screen very quickly (axis is now centre of screen)
@@ -97,7 +97,7 @@
   ;; add player(s)
   (add-entity! (list Player Position))
   ;; add enemies
-  (let ([enemies (list (make-posn 160 100) (make-posn 240 100))])
+  (let ([enemies (flatten enemy-matrix)])
     (for-each
      (λ (pos)
        (add-entity!
