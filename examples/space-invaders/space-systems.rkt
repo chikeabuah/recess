@@ -46,7 +46,7 @@
 
 (define-system bullet-motion
   #:query bullet (lookup Bullet)
-  #:map pos (set! bullet (move-bullet (get bullet 'Position)) 'Position))
+  #:map pos (~>! bullet (move-bullet (get bullet 'Position)) 'Position))
 
 (define-system render-bullets
   #:in [on-motion bullet-motion]

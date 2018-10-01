@@ -23,7 +23,7 @@
       [else 0]))
   (define player-posn (get player 'Position))
   (define new-posn (make-posn (+ (posn-x player-posn) offset) (posn-y player-posn)))
-  (set! player new-posn 'Position))
+  (~>! player new-posn 'Position))
 
 (define (move-bullet pos)
   (make-posn (posn-x pos) (- (posn-y pos) 2)))
@@ -31,7 +31,7 @@
 (define (h-align-shot bullet key player)
   (define player-posn (get player 'Position))
   (when (and key (eq? (key-event-code key) #\s))
-    (set! (add-entity! bullet) player-posn 'Position)))
+    (~>! (add-entity! bullet) player-posn 'Position)))
 
 (define (get-entity-posns ents)
   (map
