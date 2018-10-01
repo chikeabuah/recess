@@ -48,3 +48,32 @@
   (define poslst (make-list (length posns) pos))
   (define distances (map distance poslst posns))
   (ormap (λ (d) (< d thresh)) distances))
+
+(define (move-enemy-h en)
+  (begin
+    (define current-max-offset (get en 'MaxOffset))
+    (define current-offset (get en 'CurrentOffset))
+    (define axis (get en 'Axis))
+    (define polarity (get en 'Polarity))
+    (define pos (get en 'Position))
+    (define fw (get en 'FirstWall))
+    (define switch? (<= current-max-offset current-offset))
+    (when switch?
+      (set! polarity (not polarity))
+      (set! current-offset 0))
+    (displayln polarity)
+    ;; we hit our first wall: double max offset
+    (when (and switch? (not fw))
+      (set! current-max-offset (* current-max-offset 2))
+      (set! fw (not fw)))
+    (set! current-offset (+ current-offset 2))
+    (if polarity   
+        (set! pos (make-posn (+ (posn-x pos) 2) (posn-y pos)))
+        (set! pos (make-posn (- (posn-x pos) 2) (posn-y pos))))
+    (~~>! en (make-immutable-hasheq
+              (list
+               (cons 'MaxOffset current-max-offset)
+               (cons 'Polarity polarity)
+               (cons 'FirstWall fw)
+               (cons 'Position pos)
+               (cons 'CurrentOffset current-offset))))))
