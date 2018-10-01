@@ -7,15 +7,12 @@
 ;; helpers
 
 ;; enemy grid
-
-(define top-left (make-posn 40 40))
-(define horizontal (map (λ (n) (* n 80)) (cdr (range 9))))
-(define top-row-temp (make-list 8 top-left))
 (define top-row
   (map
    (λ (p x-offset) (make-posn (+ x-offset (posn-x p)) (posn-y p)))
-   top-row-temp
-   horizontal))
+   (make-list 8 (make-posn 40 40))
+   (map (λ (n) (* n 80)) (cdr (range 9)))))
+
 (define (offset-row row y-offset)
   (map
    (λ (pos)
