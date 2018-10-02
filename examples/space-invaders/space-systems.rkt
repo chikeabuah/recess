@@ -13,6 +13,7 @@
 (define-component Polarity #t)
 (define-component FirstWall #f)
 (define-component Friendly)
+(define-component Unfriendly)
 (define-component Enemy)
 (define-component Neutral)
 (define-component Value 0)
@@ -24,7 +25,7 @@
 (define-component Alive)
 (define-component Dead)
 (define-component MoveRate 3)
-(define-component FireDelay 3)
+(define-component FireDelay 200)
 
 ;; design thoughts
 ;; if we can build this game without needing state in any of the systems it would be
@@ -52,21 +53,20 @@
   #:map pos (get en 'Position)
   #:out [image/e (draw-entities pos 'ellipse-2)])
 
-;; an approach to programming the enemies motion
-;; two alternating systems - horizontal and vertical
+(define-system enemies-shoot
+  #:query en (lookup Enemy)
+  #:map _ (shoot-from-enemy en (list Bullet Unfriendly Position)))
 
-;; the vertical system should only be enabled when the horizontal
-;; system has moved up to the offset amount
-;; so the vertical system can depend on the horizontal and listen for a signal
-
-;; we're either moving left or right so binary state
+(define-system enemy-bullet-motion
+  #:query bullet (lookup Bullet Unfriendly)
+  #:map pos (~>! bullet (move-unfriendly-bullet (get bullet 'Position)) 'Position))
 
 (define-system enemy-impact
   #:in [on-move enemy-horizontal-motion]
   #:query en (lookup Enemy Alive)
   #:map _
   (when
-      (close-enough? 10 (get en 'Position) (get-entity-posns (lookup Bullet)))
+      (close-enough? 10 (get en 'Position) (get-entity-posns (lookup Bullet Friendly)))
     (- (+ en Dead) Alive)))
 
 (define-system enemy-death
@@ -74,25 +74,33 @@
   #:query en (lookup Enemy Dead)
   #:map _ (remove-entity! en))
 
-(define-system bullet-motion
-  #:query bullet (lookup Bullet)
-  #:map pos (~>! bullet (move-bullet (get bullet 'Position)) 'Position))
+(define-system friendly-bullet-motion
+  #:query bullet (lookup Bullet Friendly)
+  #:map pos (~>! bullet (move-friendly-bullet (get bullet 'Position)) 'Position))
 
-(define-system render-bullets
-  #:in [on-motion bullet-motion]
-  #:query bullet (lookup Bullet)
+(define-system render-friendly-bullets
+  #:in [on-motion friendly-bullet-motion]
+  #:query bullet (lookup Bullet Friendly)
   #:map pos (get bullet 'Position)
   #:out [image/e (draw-entities pos 'ellipse-1)])
 
+(define-system render-unfriendly-bullets
+  #:in [on-motion enemy-bullet-motion]
+  #:query bullet (lookup Bullet Unfriendly)
+  #:map pos (get bullet 'Position)
+  #:out [image/e (draw-entities pos 'ellipse-3)])
+
 (define-system shoot
   #:in [key key/e]
-  #:post (h-align-shot (list Bullet Position) key (car (lookup Player))))
+  #:post (h-align-shot (list Bullet Friendly Position) key (car (lookup Player))))
 
 (begin-recess
   #:systems
-  render-player render-bullets 
-  move-player bullet-motion shoot
-  render-enemies enemy-impact enemy-death enemy-horizontal-motion
+  render-player render-friendly-bullets 
+  move-player friendly-bullet-motion shoot
+  render-enemies enemy-impact enemy-death
+  enemy-horizontal-motion enemy-bullet-motion
+  enemies-shoot render-unfriendly-bullets
   #:initialize
   ;; add player(s)
   (add-entity! (list Player Position))
@@ -101,7 +109,9 @@
     (for-each
      (λ (pos)
        (add-entity!
-        (list Enemy Alive CurrentOffset MaxOffset Polarity FirstWall
+        (list Enemy Alive CurrentOffset
+              MaxOffset Polarity FirstWall
+              FireDelay
               (create-component 'Position pos)
               (create-component 'Axis pos)))) 
      enemies))

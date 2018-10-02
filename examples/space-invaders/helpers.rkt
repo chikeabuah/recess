@@ -44,8 +44,20 @@
   (define new-posn (make-posn (+ (posn-x player-posn) offset) (posn-y player-posn)))
   (~>! player new-posn 'Position))
 
-(define (move-bullet pos)
+(define (move-friendly-bullet pos)
   (make-posn (posn-x pos) (- (posn-y pos) 5)))
+
+(define (move-unfriendly-bullet pos)
+  (make-posn (posn-x pos) (+ (posn-y pos) 5)))
+
+(define (shoot-from-enemy en bullet)
+  (define rate (get en 'FireDelay))
+  (define en-posn (get en 'Position))
+  (define a (random rate))(define b (random rate))
+  (define shoot? (eq? a b))
+  (display shoot?)
+  (when shoot?
+    (~>! (add-entity! bullet) en-posn 'Position)))
 
 (define (h-align-shot bullet key player)
   (define player-posn (get player 'Position))
@@ -80,7 +92,6 @@
     (when switch?
       (set! polarity (not polarity))
       (set! current-offset 0))
-    (displayln polarity)
     ;; we hit our first wall: double max offset
     (when (and switch? (not fw))
       (set! current-max-offset (* current-max-offset 2))
