@@ -69,8 +69,8 @@
       (close-enough? 10 (get en 'Position) (get-entity-posns (lookup Bullet Friendly)))
     (let* ([e (car (lookup Score))]
           [score (get e 'Score)])
-      (displayln score)
-      (~>! e (+ score 1) 'Score))
+      (~>! e (+ score 1) 'Score)
+      (displayln (get e 'Score)))
     (- (+ en Dead) Alive)))
 
 (define-system enemy-death
@@ -98,7 +98,10 @@
   #:in [key key/e]
   #:post (h-align-shot (list Bullet Friendly Position) key (car (lookup Player))))
 
-
+(define-system render-score
+  #:query s (lookup Score)
+  #:map s s
+  #:out [image/e (draw-number (car s))])
 
 (begin-recess
   #:systems
@@ -107,9 +110,10 @@
   render-enemies enemy-impact enemy-death
   enemy-horizontal-motion enemy-bullet-motion
   enemies-shoot render-unfriendly-bullets
+  render-score
   #:initialize
   ;;score
-  (add-entity! (list Score (create-component 'Position (make-posn 40 40))))
+  (add-entity! (list Score))
   ;; add player(s)
   (add-entity! (list Player Position))
   ;; add enemies

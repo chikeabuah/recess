@@ -56,6 +56,9 @@
 (define seaweed-p
   (standard-fish 10 5  #:color "green"))
 
+(define score-p
+  (text "SCORE:" (cons (send the-color-database find-color "white") null) 20))
+
 (define (ellipse-maker c)
   (disk 40 #:color (car c) #:border-color (cdr c) #:border-width 5))
 
@@ -74,7 +77,7 @@
 (define text10
   (map
    (λ (n)
-     (text (number->string n) (cons (send the-color-database find-color "white") null) 15))
+     (text (number->string n) (cons (send the-color-database find-color "white") null) 20))
    (range 10)))
 
 ;;;
@@ -86,6 +89,7 @@
 (add-sprite!/value db 'fish  fish-p)
 (add-sprite!/value db 'shark shark-p)
 (add-sprite!/value db 'seaweed seaweed-p)
+(add-sprite!/value db 'score score-p)
 (for-each
  (λ (ell i) 
    (add-sprite!/value db (format-symbol "ellipse-~a" (string->symbol (number->string i))) ell))

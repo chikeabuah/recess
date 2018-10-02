@@ -12,6 +12,7 @@
   racket/generic
   racket/hash
   racket/contract
+  racket/string
   racket/list)
 
 (require (except-in racket + -)
@@ -36,7 +37,7 @@
 
 (provide
  (all-defined-out)
- (all-from-out racket/base racket/syntax racket/match racket/list))
+ (all-from-out racket/base racket/syntax racket/match racket/list racket/string))
 
 ;; A component is an identifier
 ;; and optionally some other data

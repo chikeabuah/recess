@@ -30,6 +30,18 @@
    (λ (position) (cons sprite-sym position))
    posns))
 
+(define (draw-number n)
+  (define num (get n 'Score))
+  (define str (number->string num))
+  (define lst (filter (λ (c) (not (equal? c ""))) (string-split str "")))
+  (define offsets (map (λ (i) (make-posn (+ (* 10 i) 110) 40)) (range (length lst))))
+  (define res (map
+   (λ (ch pos) (cons (format-symbol "text-~a" (string->symbol ch)) pos))
+   lst offsets))
+  (displayln res)
+  (define r (append (list (cons 'score (make-posn 60 40))) res))
+  r)
+
 (define (move-player! player key)
   (define k
     (if (and key (not (pair? key)))
