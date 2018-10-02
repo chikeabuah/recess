@@ -17,7 +17,7 @@
 (define-component Enemy)
 (define-component Neutral)
 (define-component Value 0)
-(define-component Count 0)
+(define-component Score 0)
 (define-component Bullet)
 (define-component Thing)
 (define-component Player)
@@ -67,6 +67,10 @@
   #:map _
   (when
       (close-enough? 10 (get en 'Position) (get-entity-posns (lookup Bullet Friendly)))
+    (let* ([e (car (lookup Score))]
+          [score (get e 'Score)])
+      (displayln score)
+      (~>! e (+ score 1) 'Score))
     (- (+ en Dead) Alive)))
 
 (define-system enemy-death
@@ -94,6 +98,8 @@
   #:in [key key/e]
   #:post (h-align-shot (list Bullet Friendly Position) key (car (lookup Player))))
 
+
+
 (begin-recess
   #:systems
   render-player render-friendly-bullets 
@@ -102,6 +108,8 @@
   enemy-horizontal-motion enemy-bullet-motion
   enemies-shoot render-unfriendly-bullets
   #:initialize
+  ;;score
+  (add-entity! (list Score (create-component 'Position (make-posn 40 40))))
   ;; add player(s)
   (add-entity! (list Player Position))
   ;; add enemies

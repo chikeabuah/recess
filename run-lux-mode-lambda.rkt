@@ -68,7 +68,14 @@
     (map
      (λ (n m) (cons (random n) (random m)))
      (make-list 10 (length COLORS))
-     (make-list 10 (length COLORS))))))  
+     (make-list 10 (length COLORS))))))
+
+;; make numbers 0-9
+(define text10
+  (map
+   (λ (n)
+     (text (number->string n) (cons (send the-color-database find-color "white") null) 15))
+   (range 10)))
 
 ;;;
 ;;; SPRITES
@@ -83,6 +90,10 @@
  (λ (ell i) 
    (add-sprite!/value db (format-symbol "ellipse-~a" (string->symbol (number->string i))) ell))
  ellipse10 (range 10))
+(for-each
+ (λ (txt i) 
+   (add-sprite!/value db (format-symbol "text-~a" (string->symbol (number->string i))) txt))
+ text10 (range 10))
 
 
 (define cdb (compile-sprite-db db))
