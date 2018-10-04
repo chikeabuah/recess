@@ -38,7 +38,6 @@
   (define res (map
    (λ (ch pos) (cons (format-symbol "text-~a" (string->symbol ch)) pos))
    lst offsets))
-  (displayln res)
   (define r (append (list (cons 'score (make-posn 60 40))) res))
   r)
 

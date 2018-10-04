@@ -143,7 +143,7 @@
     ;; need to reset sink events (and key)
     (reset-events (λ (ev) (event:sink? ev)))
     ;;then step
-    (displayln "executing recess graph...")
+    ;(displayln "executing recess graph...")
     (step-world)
     (reset-events (λ (ev) (eq? key/e ev)))
     ;; get sink events, right now we only care about images

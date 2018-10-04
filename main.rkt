@@ -211,14 +211,16 @@
     (define (step-func arg)
       (cond
         [(event? arg)
-         (display "this is an event:")(display arg)(displayln (event-name arg)) arg]
+         ;(display "this is an event:")(display arg)(displayln (event-name arg))
+         arg]
         [(system? arg)
-         (display "executing ")(display arg)(displayln (system-id arg))
+         ;(display "executing ")(display arg)(displayln (system-id arg))
          ;; this call returns the system for the next iteration
          (define new-system-state ((system-body arg) arg)) new-system-state]
-        [else (display "unknown")
-              (displayln arg)
-              (raise "recess: unknown graph node type")]))
+        [else
+         ;(display "unknown")
+         ;(displayln arg)
+         (raise "recess: unknown graph node type")]))
     (define new-world-graph (map step-func (world-dependency-graph (current-world))))
     (current-world (struct-copy world (current-world) [dependency-graph new-world-graph]))))
 

@@ -69,8 +69,7 @@
       (close-enough? 10 (get en 'Position) (get-entity-posns (lookup Bullet Friendly)))
     (let* ([e (car (lookup Score))]
           [score (get e 'Score)])
-      (~>! e (+ score 1) 'Score)
-      (displayln (get e 'Score)))
+      (~>! e (+ score 1) 'Score))
     (- (+ en Dead) Alive)))
 
 (define-system enemy-death
