@@ -131,23 +131,30 @@ The general goals for the user interface of the DSL are:
 - Intuitive. Easy to reason about.
 - Makes everyone happy.
   
-In the illustrations below, we attempt to build out the game of [Tetris](https://en.wikipedia.org/wiki/Tetris).  
+In the illustrations below, we attempt to build out the game of [Space Invaders](https://en.wikipedia.org/wiki/Space_Invaders).  
   
 Note: the syntax below is still in flux.    
   
 **Creating an entity**
-```racket
- ;; XXX Activetetromino is an archetype    
- (define ex1 (ActiveTetromino))  
+```racket    
+   (let ([enemies (flatten enemy-matrix)])
+    (for-each
+     (λ (pos)
+       (add-entity!
+        (list Enemy Alive CurrentOffset
+              MaxOffset Polarity FirstWall
+              FireDelay
+              (create-component 'Position pos)
+              (create-component 'Axis pos)))) 
+     enemies)) 
  ```  
   
 **Modifying an entity**    
 ```racket
 ;; adding a component to an existing entity
-(Rotatable+! ex1)
-
+;; and
 ;; removing a component from an existing entity
-(Rotatable-! ex1)
+(- (+ en Dead) Alive)
 ```
   
 **Creating/Modifying a reusable archetype**
@@ -170,12 +177,26 @@ Note: the syntax below is still in flux.
   
 **Creating a component**    
 ```racket
-(define-component Shape ([which (random-shape)]))
-(define-component Color ([rgb (random-color)]))
-(define-component Position ([x 0] [y 0]))
-(define-component Rotatable)
-(define-component CanSoftDrop)
-(define-component CanHardDrop) 
+(define-component Axis)
+(define-component MaxOffset 40)
+(define-component CurrentOffset 0)
+;; enemy direction flag
+(define-component Polarity #t)
+(define-component FirstWall #f)
+(define-component Friendly)
+(define-component Unfriendly)
+(define-component Enemy)
+(define-component Neutral)
+(define-component Value 0)
+(define-component Score 0)
+(define-component Bullet)
+(define-component Thing)
+(define-component Player)
+(define-component Health 100)
+(define-component Alive)
+(define-component Dead)
+(define-component MoveRate 3)
+(define-component FireDelay 200)
 ```
   
 **Creating a system**    
@@ -186,33 +207,61 @@ Note: the syntax below is still in flux.
 - We can also assume that once a tetromino reaches a resting point, another system will be responsible for “deactivating” it (by modifying its archetype) so gravity no longer applies. This system, a check-active system, can depend on gravity, because we want to check after every downward motion if the tetromino is still active.
 
 ```racket  
-(define-system gravity    
- #:on (ActiveTetromino)        
- (set! e.Position.y (sub1 e.Position.y)))    
-  
-(define-system check-active    
- #:on (ActiveTetromino)        
- #:depends (gravity)    
- ;; check if we’ve reached the bottom    
- ;; if so then    
- (set! e.Active.flag false))    
+(define-system move-player
+  #:in [key key/e]
+  #:query player (lookup Player)
+  #:map pos (get player 'Position) (move-player! player (and key (key-event-code key))))
+
+(define-system render-player
+  #:in [on-move move-player]
+  #:query player (lookup Player)
+  #:map pos (get player 'Position)
+  #:out [image/e (draw-entities pos 'ellipse-0)])
+
+(define-system enemy-horizontal-motion
+  #:query en (lookup Enemy Alive)
+  ;; increment offset, move in some direction
+  #:map _ (move-enemy-h en))
+
+(define-system render-enemies
+  #:in [on-h-move enemy-horizontal-motion]
+  #:query en (lookup Enemy)
+  #:map pos (get en 'Position)
+  #:out [image/e (draw-entities pos 'ellipse-2)])
+
+(define-system enemies-shoot
+  #:query en (lookup Enemy)
+  #:map _ (shoot-from-enemy en (list Bullet Unfriendly Position)))
 ```  
   
 **World operations**    
   
  ```racket 
-  ;; XXX This is a little ugly, maybe there is a way to make a system    
-  ;; depend on the existence of at least one entity existing with a    
-  ;; certain component. Maybe there is a general "signal"    
-  ;; concept. This would go well with being able to say a priori what    
-  ;; systems exist and then being able to turn them on later with a    
-  ;; signal.    
-(module+ main
- (go!
-  (list ex1 screen music current-score)
-  [on-tick gravity]
-  [on-tick check-active]
-  [on-key 'up hard-drop]
-  [on-key 'down soft-drop])) 
+(begin-recess
+  #:systems
+  render-player render-friendly-bullets 
+  move-player friendly-bullet-motion shoot
+  render-enemies enemy-impact enemy-death
+  enemy-horizontal-motion enemy-bullet-motion
+  enemies-shoot render-unfriendly-bullets
+  render-score
+  #:initialize
+  ;;score
+  (add-entity! (list Score))
+  ;; add player(s)
+  (add-entity! (list Player Position))
+  ;; add enemies
+  (let ([enemies (flatten enemy-matrix)])
+    (for-each
+     (λ (pos)
+       (add-entity!
+        (list Enemy Alive CurrentOffset
+              MaxOffset Polarity FirstWall
+              FireDelay
+              (create-component 'Position pos)
+              (create-component 'Axis pos)))) 
+     enemies))
+  #:stop #f
+  #:run run/lux-mode-lambda) 
 ```
   

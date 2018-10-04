@@ -21,7 +21,7 @@
 (define-component Bullet)
 (define-component Thing)
 (define-component Player)
-(define-component Health 0)
+(define-component Health 100)
 (define-component Alive)
 (define-component Dead)
 (define-component MoveRate 3)
