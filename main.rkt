@@ -189,13 +189,23 @@
          (begin
            (define systems (list system-name ...))
            (define system-in-out-name-lists
-             (map (λ (sys) (list (system-in sys) (system-out sys) sys)) systems))
+             (map
+              (λ (sys)
+                (cons
+                 (list (system-in sys) (system-out sys) sys)
+                 (list
+                  (map event-generic-name (system-in sys))
+                  (map event-generic-name (system-out sys))
+                  (system-id sys))))
+                systems))
            (define (init-func) init-expr ...)
-           (define first-tsorted-world
+           (define first-world-graph-pair
              (recess-init
               init-func
               system-in-out-name-lists
               (world-dependency-graph (current-world))))
+           (display (graphviz (cdr first-world-graph-pair)))
+           (define first-tsorted-world (tsort (car  first-world-graph-pair)))
            (current-world (struct-copy world (current-world) [dependency-graph first-tsorted-world]))
            (run-expr (list
                       start-time
