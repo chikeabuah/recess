@@ -37,16 +37,27 @@
 
 (provide
  (all-defined-out)
- (all-from-out racket/base racket/syntax racket/match racket/list racket/string))
+ (all-from-out
+  racket/base
+  racket/syntax
+  racket/match
+  racket/list
+  racket/string))
+
+(define CMAX 100)
+(define EMAX 500)
 
 ;; A component is an identifier
 ;; and optionally some other data
 ;; currently still experimenting with the idea of having the other data be
 ;; some sort of prototype or class hence the name
-(struct component (id proto))
 
-(define (create-component id [proto #f])  
-  (component id proto))
+(define CIDX 0)
+
+(struct component (id index proto))
+
+(define (create-component id index [proto #f])  
+  (component id index proto))
 
 (define-syntax (define-component stx)
   (syntax-parse stx
@@ -56,7 +67,8 @@
            ;; this is so we can say things like Shape?, Name?, Count? on an entity
            (define (name? ent)
              (member 'name (map car (hash->list (entity-components ent)))))
-           (define name (create-component 'name (~? given-proto #f)))))]))
+           (define name (create-component 'name CIDX (~? given-proto #f)))
+           (set! CIDX (add1 CIDX))))]))
 
 ;; list of components
 ;; does this need to be anything else?
@@ -70,14 +82,21 @@
 ;; cmpnts is a (make-immutable-hasheq)
 (struct entity (id components))
 
+(define EIDX 0)
+
+;; an entity can be a vector of component structs
+;; each component will be in its cidx spot in the vector
+
+
 ;; accepts a list of components
 (define/contract (add-entity! cmpnts)
   (->  (listof component?) entity?)
-  ;; NOTE: this means components are unique in an entity
-  ;; we might not want this in practice
-  (define e (create-entity (gensym) (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts))))
+  (define e (make-vector CMAX #f))
+  (for-each
+   (λ (c) (vector-set! e (component-index c) c))
+   cmpnts)
   ;; add e to world
-  (when (current-world) (current-world (add-entity-to-world e (current-world))))
+  (when (current-world) (current-world (add-entity-to-world e EIDX (current-world))))
   e)
 
 (define (remove-entity! e)
@@ -121,13 +140,15 @@
   (set-current-world-entity new-e)
   new-e)
 
-(define (add-entity-to-world e wrld)
+(define (add-entity-to-world e idx wrld)
   (let ([current-entities (world-entities wrld)])
-    (struct-copy world wrld [entities (hash-set current-entities (entity-id e) e)])))
+    (struct-copy world wrld
+                 [entities (vector-set! current-entities idx e)])))
 
 (define (remove-entity-from-world e wrld)
   (let ([current-entities (world-entities wrld)])
-    (struct-copy world wrld [entities (hash-remove current-entities (entity-id e))])))
+    (struct-copy world wrld
+                 [entities (vector-set! current-entities idx #f)])))
 
 (define (add-components-to-entity e cmpnts)
   (define new-e
@@ -161,7 +182,7 @@
   (hash-ref (entity-components ent) ref))
 
 ;; worlds
-;; entities are a make-immutable-hasheq
+;; entities are a vector
 (struct world (name entities dependency-graph))
 
 ;; if we ever need to keep track of a list of worlds
@@ -183,7 +204,7 @@
         (~seq #:stop stop-expr:expr ...)
         (~seq #:run run-expr:id))
      #'(parameterize ([current-world
-                       (world (gensym) (make-immutable-hasheq) (unweighted-graph/directed '()))]
+                       (world (gensym) (make-vector EMAX #f) (unweighted-graph/directed '()))]
                       [start-time (current-seconds)]
                       [current-events (poll-events (current-events))])
          (begin
