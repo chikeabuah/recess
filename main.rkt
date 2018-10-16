@@ -1,20 +1,20 @@
 #lang racket/base
 
 (require
-  (for-syntax
-   syntax/parse
-   racket/base
-   racket/syntax
-   racket/match)
-  recess/init
+ (for-syntax
+  syntax/parse
+  racket/base
   racket/syntax
-  racket/match
-  racket/generic
-  racket/hash
-  racket/contract
-  racket/string
-  racket/list
-  racket/set)
+  racket/match)
+ recess/init
+ racket/syntax
+ racket/match
+ racket/generic
+ racket/hash
+ racket/contract
+ racket/string
+ racket/list
+ racket/set)
 
 (define (~>! id expr [ref (λ (x) #f)])
   (set-entity! id expr ref))
@@ -45,7 +45,7 @@
 
 (struct component (id index proto))
 
-(define (create-component id [proto #f])  
+(define (create-component id [proto #f])
   (define c (component id CIDX proto))
   (hash-set! component-registry id CIDX)
   ;do reverse registry vector stuff
@@ -56,7 +56,7 @@
 (define (copy-component id proto)
   (define c (component id (hash-ref component-registry id) proto))
   c)
-  
+
 (define component-registry (make-hasheq))
 (define reverse-component-registry (make-vector CMAX #f))
 
@@ -121,17 +121,18 @@
   e)
 
 (define (batch-set-entity! e hsh)
-  (define lst (hash->list hsh))
-  (for-each
-   (λ (pair) (set-entity! e (cdr pair) (car pair)))
-   lst)
+  (for ([(k v) (in-hash hsh)])
+    (set-entity! e v k))
   e)
 
 (define (add-entity-to-world! e idx wrld)
   (vector-set! (world-entities wrld) idx e))
 
 (define (remove-entity-from-world! e wrld)
-  (define rm-idx (index-of (map (λ (d) (equal? d e)) (vector->list (world-entities wrld))) #t))
+  (define rm-idx
+    (for/or ([i (in-naturals)]
+             [d (in-vector (world-entities wrld))])
+      (and (equal? d e) i)))
   (vector-set! (world-entities wrld) rm-idx #f))
 
 (define (add-components-to-entity e cmpnts)
@@ -229,14 +230,11 @@
     (current-world (struct-copy world (current-world) [dependency-graph new-world-graph]))))
 
 ;; the idea here is to poll the events by examing the hash values
-;; if the hash value is a thunk we invoke it 
+;; if the hash value is a thunk we invoke it
 (define (poll-events evnts)
-  (->  hash-eq? hash-eq?)
-  (define (poll event-pair)
-    (if (procedure? (cdr event-pair))
-        (cons (car event-pair) ((cdr event-pair)))
-        event-pair))
-  (make-immutable-hasheq (map poll (hash->list evnts))))
+  (-> hash-eq? hash-eq?)
+  (for/hasheq ([(k v) (in-hash evnts)])
+    (values k (if (procedure? v) (v) v))))
 
 (define-syntax (because stx)
   (syntax-parse stx
@@ -253,6 +251,7 @@
 
 ;; helpers for determining world termination conditions
 (define (systems-condition? systems)
+  ;; XXX lots of allocation
   (define active-sys-ids (map system-id systems))
   (define (active-sys? sys) (member (system-id sys) active-sys-ids))
   ;; TODO compose
@@ -288,7 +287,7 @@
 (struct event:sink event (output))
 (struct event:transform event (f))
 
-(define (create-event name [zero (list)] [plus (λ (x y) y)])  
+(define (create-event name [zero (list)] [plus (λ (x y) y)])
   (event name zero plus))
 
 (define (set-event key value)
@@ -444,7 +443,9 @@
                 (~? (begin post-body ...) (void)))
               (define state-0 (if prior-state prior-state (~? initial-state #f)))
               (define get-event-vals (λ (ev) (hash-ref (current-events) ev)))
-              (define event-vals (map get-event-vals (filter event-generic? (list evt ...))))
+              (define event-vals
+                ;; XXX Lots of allocation
+                (map get-event-vals (filter event-generic? (list evt ...))))
               (define pre-val-0 (pre-body-fun state-0 event-vals))
               (define state-1 (if (not (void? pre-val-0)) pre-val-0 state-0))
               (define input-events (let-values ([(evt-name ...) (values evt ...)])
@@ -456,10 +457,10 @@
                 (~? (map (λ (entities-name) map-body ...) entities) (void)))
               (define (reduce-body-fun state-name pre-name map-name)
                 (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))
-              (define maps-val (if
-                                enabled
-                                (map-body-fun state-1 pre-val-0 entities event-vals)
-                                (list)))
+              (define maps-val
+                (if enabled
+                  (map-body-fun state-1 pre-val-0 entities event-vals)
+                  (list)))
               (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
               (define post (post-body-fun state-1 pre-val-0 reduce-val event-vals))
               (define state-2 (if (not (void? post)) post state-1))
@@ -474,11 +475,12 @@
                      (~? ((event-plus out-evt)
                           (hash-ref (current-events) out-evt)
                           (begin evt-val-body ...)) (void)))) ...)
-                 (void))(void))
+                 (void))
+                (void))
               (define output-events
                 (if enabled
-                    (output-events-fun state-2 pre-val-0 maps-val reduce-val)
-                    #f))
+                  (output-events-fun state-2 pre-val-0 maps-val reduce-val)
+                  #f))
               ;; persist the end of iteration state
               ;; this helps with checking the world termination condition
               ;; between iterations
@@ -494,6 +496,7 @@
 ;; get all the entities in the current world that match this archetype
 ;; the arguments are: first component, rest of the components
 (define (lookup archetype . rest)
+  ;; XXX Lots of allocation
   (define entities (world-entities (current-world)))
   (define (archetype-match? e)
     (subset?
@@ -503,12 +506,13 @@
   matches)
 
 (define (entity->components e)
+  ;; XXX Lots of allocation
   (define res null)
   (define idx 0)
   (define lst (vector->list e))
   (for-each
    (λ (x)
-     (when x 
+     (when x
        (set! res (append res (list (vector-ref reverse-component-registry idx)))))
      (set! idx (add1 idx)))
    lst)
@@ -518,4 +522,3 @@
 (define plus add-components-to-entity)
 
 (define minus remove-components-from-entity)
-
