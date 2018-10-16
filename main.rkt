@@ -138,8 +138,8 @@
   (vector-set! (world-entities wrld) idx e))
 
 (define (remove-entity-from-world! e wrld)
-  (displayln (map (λ (d) (equal? d e)) (vector->list (world-entities wrld))))
-  (vector-set! (world-entities wrld) -1 #f))
+  (define rm-idx (index-of (map (λ (d) (equal? d e)) (vector->list (world-entities wrld))) #t))
+  (vector-set! (world-entities wrld) rm-idx #f))
 
 (define (add-components-to-entity e cmpnts)
   (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
