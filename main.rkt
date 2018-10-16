@@ -41,7 +41,6 @@
 
 (define CIDX 0)
 (define (increment-cidx!)
-  (displayln CIDX)
   (set! CIDX (add1 CIDX)))
 
 (struct component (id index proto))
@@ -99,7 +98,6 @@
   (for-each
    (λ (c) (vector-set! e (component-index c) c))
    cmpnts)
-  ;(displayln e)
   ;; add e to world
   (when (current-world)
     (add-entity-to-world! e EIDX (current-world))
@@ -114,13 +112,8 @@
 ;; check if it's a component with data or not
 (define (get-cmpnt-val cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #f))
 
-(define (make-cmpnt-id-val-pair cmpnt) (cons (component-id cmpnt) (get-cmpnt-val cmpnt)))
-
 (define (add-entities! cmpnts n)
   (map add-entity! (make-list n cmpnts)))
-
-#;(define (create-entity id [cmpnts (λ (x) #t)])  
-    (entity id cmpnts))
 
 (define (set-entity! e expr ref)
   (define idx (hash-ref component-registry ref))
@@ -154,11 +147,6 @@
    (λ (c) (vector-set! e (component-index c) #f))
    cs)
   e)
-
-#;(define (set-current-world-entity new-e)
-    (current-world
-     (struct-copy world (current-world)
-                  [entities (hash-set (world-entities (current-world)) (entity-id new-e) new-e)])))
 
 ;; get the value of a component described by ref
 ;; from the entity ent
