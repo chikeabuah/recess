@@ -70,7 +70,7 @@
     (let* ([e (car (lookup Score))]
           [score (get e 'Score)])
       (~>! e (+ score 1) 'Score))
-    (- (+ en Dead) Alive)))
+    (minus (plus en Dead) Alive)))
 
 (define-system enemy-death
   #:in [on-impact enemy-impact]
@@ -123,8 +123,8 @@
         (list Enemy Alive CurrentOffset
               MaxOffset Polarity FirstWall
               FireDelay
-              (create-component 'Position pos)
-              (create-component 'Axis pos)))) 
+              (copy-component 'Position pos)
+              (copy-component 'Axis pos)))) 
      enemies))
   #:stop #f
   #:run run/lux-mode-lambda)

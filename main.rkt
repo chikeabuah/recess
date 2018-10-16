@@ -13,27 +13,14 @@
   racket/hash
   racket/contract
   racket/string
-  racket/list)
-
-(require (except-in racket + -)
-         (rename-in racket
-                    [+ former-plus]
-                    [- former-minus]))
+  racket/list
+  racket/set)
 
 (define (~>! id expr [ref (λ (x) #f)])
   (set-entity! id expr ref))
 
 (define (~~>! id hsh)
   (batch-set-entity! id hsh))
-
-;; this is an attempt to simplify modifying entities
-(define (+ ent . cmpnts)
-  (cond [(entity? ent) (add-components-to-entity ent cmpnts)]
-        [else (apply former-plus (cons ent cmpnts))]))
-
-(define (- ent . cmpnts)
-  (cond [(entity? ent) (remove-components-from-entity ent cmpnts)]
-        [else (apply former-minus (cons ent cmpnts))]))
 
 (provide
  (all-defined-out)
@@ -53,11 +40,26 @@
 ;; some sort of prototype or class hence the name
 
 (define CIDX 0)
+(define (increment-cidx!)
+  (displayln CIDX)
+  (set! CIDX (add1 CIDX)))
 
 (struct component (id index proto))
 
-(define (create-component id index [proto #f])  
-  (component id index proto))
+(define (create-component id [proto #f])  
+  (define c (component id CIDX proto))
+  (hash-set! component-registry id CIDX)
+  ;do reverse registry vector stuff
+  (vector-set! reverse-component-registry CIDX id)
+  (increment-cidx!)
+  c)
+
+(define (copy-component id proto)
+  (define c (component id (hash-ref component-registry id) proto))
+  c)
+  
+(define component-registry (make-hasheq))
+(define reverse-component-registry (make-vector CMAX #f))
 
 (define-syntax (define-component stx)
   (syntax-parse stx
@@ -66,9 +68,9 @@
        #'(begin
            ;; this is so we can say things like Shape?, Name?, Count? on an entity
            (define (name? ent)
-             (member 'name (map car (hash->list (entity-components ent)))))
-           (define name (create-component 'name CIDX (~? given-proto #f)))
-           (set! CIDX (add1 CIDX))))]))
+             (member 'name (entity->components ent)))
+           (define name (create-component 'name (~? given-proto #f)))
+           name))]))
 
 ;; list of components
 ;; does this need to be anything else?
@@ -79,30 +81,34 @@
          (list components ...))]))
 
 ;; entities
-;; cmpnts is a (make-immutable-hasheq)
-(struct entity (id components))
-
 (define EIDX 0)
 
-;; an entity can be a vector of component structs
-;; each component will be in its cidx spot in the vector
+(define (increment-eidx!)
+  (set! EIDX (add1 EIDX)))
 
+;; an entity can be a vector of component structs
+;; THOUGHT: actually it doesnt need to be the whole struct??
+;; maybe it would be easier to just store the data in the vector
+;; and keep the other info (ref, idx in a hash table)
+;; each component will be in its cidx spot in the vector
 
 ;; accepts a list of components
 (define/contract (add-entity! cmpnts)
-  (->  (listof component?) entity?)
+  (->  (listof component?) vector?)
   (define e (make-vector CMAX #f))
   (for-each
    (λ (c) (vector-set! e (component-index c) c))
    cmpnts)
+  ;(displayln e)
   ;; add e to world
-  (when (current-world) (current-world (add-entity-to-world e EIDX (current-world))))
+  (when (current-world)
+    (add-entity-to-world! e EIDX (current-world))
+    (increment-eidx!))
   e)
 
 (define (remove-entity! e)
-  (when
-      (current-world)
-    (current-world (remove-entity-from-world e (current-world))))
+  (when (current-world)
+    (remove-entity-from-world! e (current-world)))
   e)
 
 ;; check if it's a component with data or not
@@ -113,73 +119,52 @@
 (define (add-entities! cmpnts n)
   (map add-entity! (make-list n cmpnts)))
 
-(define (create-entity id [cmpnts (λ (x) #t)])  
-  (entity id cmpnts))
+#;(define (create-entity id [cmpnts (λ (x) #t)])  
+    (entity id cmpnts))
 
-(define (set-entity! e expr [ref (λ (x) #f)])
-  ;; if the entity has just one component then it is unambiguous
-  ;; if it has more than one component then we need a reference to 
-  ;; the component to set it
-  (define cmpnts-hash (entity-components e))
-  (define keys (hash-keys cmpnts-hash))
-  (define cmpnts-length (length keys))
-  (define new-cmpnts-hash
-    (cond 
-      [(eq? cmpnts-length 1) (hash-set cmpnts-hash (first keys) expr)]
-      [ref (hash-set cmpnts-hash ref expr)]
-      [else (raise "recess: attempt to set entity was ambiguous")]))
-  (define new-e (entity (entity-id e) new-cmpnts-hash))
-  (set-current-world-entity new-e)
-  new-e)
+(define (set-entity! e expr ref)
+  (define idx (hash-ref component-registry ref))
+  (vector-set! e idx expr)
+  e)
 
 (define (batch-set-entity! e hsh)
-  (define cmpnts-hash (entity-components e))
-  (define new-cmpnts-hash
-    (hash-union cmpnts-hash hsh #:combine (λ (old new) new)))
-  (define new-e (entity (entity-id e) new-cmpnts-hash))
-  (set-current-world-entity new-e)
-  new-e)
+  (define lst (hash->list hsh))
+  (for-each
+   (λ (pair) (set-entity! e (cdr pair) (car pair)))
+   lst)
+  e)
 
-(define (add-entity-to-world e idx wrld)
-  (let ([current-entities (world-entities wrld)])
-    (struct-copy world wrld
-                 [entities (vector-set! current-entities idx e)])))
+(define (add-entity-to-world! e idx wrld)
+  (vector-set! (world-entities wrld) idx e))
 
-(define (remove-entity-from-world e wrld)
-  (let ([current-entities (world-entities wrld)])
-    (struct-copy world wrld
-                 [entities (vector-set! current-entities idx #f)])))
+(define (remove-entity-from-world! e wrld)
+  (displayln (map (λ (d) (equal? d e)) (vector->list (world-entities wrld))))
+  (vector-set! (world-entities wrld) -1 #f))
 
 (define (add-components-to-entity e cmpnts)
-  (define new-e
-    (entity
-     (entity-id e)
-     (hash-union
-      (entity-components e)
-      (make-immutable-hasheq (map make-cmpnt-id-val-pair cmpnts))
-      #:combine (λ (old new) new))))
-  (set-current-world-entity new-e)
-  new-e)
+  (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
+  (for-each
+   (λ (c) (vector-set! e (component-index c) c))
+   cs)
+  e)
 
 (define (remove-components-from-entity e cmpnts)
-  (define to-rm (map component-id cmpnts))
-  (define (keep? cmpnt-assoc) (not (member (car cmpnt-assoc) to-rm)))
-  (define new-e
-    (entity
-     (entity-id e)
-     (make-immutable-hasheq (filter keep? (hash->list (entity-components e))))))
-  (set-current-world-entity new-e)
-  new-e)
+  (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
+  (for-each
+   (λ (c) (vector-set! e (component-index c) #f))
+   cs)
+  e)
 
-(define (set-current-world-entity new-e)
-  (current-world
-   (struct-copy world (current-world)
-                [entities (hash-set (world-entities (current-world)) (entity-id new-e) new-e)])))
+#;(define (set-current-world-entity new-e)
+    (current-world
+     (struct-copy world (current-world)
+                  [entities (hash-set (world-entities (current-world)) (entity-id new-e) new-e)])))
 
 ;; get the value of a component described by ref
 ;; from the entity ent
-(define (get ent ref)
-  (hash-ref (entity-components ent) ref))
+(define (get e ref)
+  (define amb (vector-ref e (hash-ref component-registry ref)))
+  (if (component? amb) (component-proto amb) amb))
 
 ;; worlds
 ;; entities are a vector
@@ -218,7 +203,7 @@
                   (map event-generic-name (system-in sys))
                   (map event-generic-name (system-out sys))
                   (system-id sys))))
-                systems))
+              systems))
            (define (init-func) init-expr ...)
            (define first-world-graph-pair
              (recess-init
@@ -522,10 +507,27 @@
 ;; the arguments are: first component, rest of the components
 (define (lookup archetype . rest)
   (define entities (world-entities (current-world)))
-  (define (archetype-match? ent)
+  (define (archetype-match? e)
     (subset?
      (list->set (map component-id (cons archetype rest)))
-     (list->set (map car (hash->list (entity-components ent))))))
-  (define matches (filter archetype-match? (map cdr (hash->list entities))))
+     (list->set (entity->components e))))
+  (define matches (filter archetype-match? (filter (λ (e) e) (vector->list entities))))
   matches)
+
+(define (entity->components e)
+  (define res null)
+  (define idx 0)
+  (define lst (vector->list e))
+  (for-each
+   (λ (x)
+     (when x 
+       (set! res (append res (list (vector-ref reverse-component-registry idx)))))
+     (set! idx (add1 idx)))
+   lst)
+  res)
+
+;; this is an attempt to simplify modifying entities
+(define plus add-components-to-entity)
+
+(define minus remove-components-from-entity)
 
