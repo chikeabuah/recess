@@ -1,21 +1,21 @@
 #lang racket/base
 
 (require
- (for-syntax
-  syntax/parse
-  racket/base
+  (for-syntax
+   syntax/parse
+   racket/base
+   racket/syntax
+   racket/match)
+  recess/init
   racket/syntax
-  racket/match)
- recess/init
- racket/syntax
- racket/match
- racket/generic
- racket/hash
- racket/contract
- racket/string
- racket/list
- racket/set
- racket/vector)
+  racket/match
+  racket/generic
+  racket/hash
+  racket/contract
+  racket/string
+  racket/list
+  racket/set
+  racket/vector)
 
 (define (~>! id expr [ref (λ (x) #f)])
   (set-entity! id expr ref))
@@ -455,8 +455,8 @@
                 (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))
               (define maps-val
                 (if enabled
-                  (map-body-fun state-1 pre-val-0 entities event-vals)
-                  (list)))
+                    (map-body-fun state-1 pre-val-0 entities event-vals)
+                    (list)))
               (define reduce-val (reduce-body-fun state-1 pre-val-0 maps-val))
               (define post (post-body-fun state-1 pre-val-0 reduce-val event-vals))
               (define state-2 (if (not (void? post)) post state-1))
@@ -475,8 +475,8 @@
                 (void))
               (define output-events
                 (if enabled
-                  (output-events-fun state-2 pre-val-0 maps-val reduce-val)
-                  #f))
+                    (output-events-fun state-2 pre-val-0 maps-val reduce-val)
+                    #f))
               ;; persist the end of iteration state
               ;; this helps with checking the world termination condition
               ;; between iterations
@@ -495,13 +495,16 @@
   ;; XXX Lots of allocation
   (define entities (world-entities (current-world)))
   (define (archetype-match? e)
-    (define flag #t)
-    (define idxs (map component-index (cons archetype rest)))
-    (for-each
-     (λ (idx) (when (not (vector-ref e idx)) (set! flag #f)))
-     idxs)
-    flag)
-  (define matches (vector->list (vector-filter archetype-match? (vector-filter true? entities))))
+    (if e
+        (begin
+          (let ([flag #t]
+                [idxs (map component-index (cons archetype rest))])
+            (for-each
+             (λ (idx) (when (not (vector-ref e idx)) (set! flag #f)))
+             idxs)
+            flag))
+        #f))
+  (define matches (vector->list (vector-filter archetype-match? entities)))
   matches)
 
 (define (true? x)
