@@ -14,7 +14,8 @@
  racket/contract
  racket/string
  racket/list
- racket/set)
+ racket/set
+ racket/vector)
 
 (define (~>! id expr [ref (λ (x) #f)])
   (set-entity! id expr ref))
@@ -48,8 +49,6 @@
 (define (create-component id [proto #f])
   (define c (component id CIDX proto))
   (hash-set! component-registry id CIDX)
-  ;do reverse registry vector stuff
-  (vector-set! reverse-component-registry CIDX id)
   (increment-cidx!)
   c)
 
@@ -58,16 +57,12 @@
   c)
 
 (define component-registry (make-hasheq))
-(define reverse-component-registry (make-vector CMAX #f))
 
 (define-syntax (define-component stx)
   (syntax-parse stx
     [(_ name [~optional given-proto])
      (with-syntax ([name? (format-id #'name "~a?" (syntax-e #'name))])
        #'(begin
-           ;; this is so we can say things like Shape?, Name?, Count? on an entity
-           (define (name? ent)
-             (member 'name (entity->components ent)))
            (define name (create-component 'name (~? given-proto #f)))
            name))]))
 
@@ -117,7 +112,7 @@
 
 (define (set-entity! e expr ref)
   (define idx (hash-ref component-registry ref))
-  (vector-set! e idx expr)
+  (vector-set! e idx (struct-copy component (vector-ref e idx) [proto expr]))
   e)
 
 (define (batch-set-entity! e hsh)
@@ -501,22 +496,12 @@
   (define (archetype-match? e)
     (subset?
      (list->set (map component-id (cons archetype rest)))
-     (list->set (entity->components e))))
-  (define matches (filter archetype-match? (filter (λ (e) e) (vector->list entities))))
+     (list->set (vector->list (vector-map component-id (vector-filter true? e))))))
+  (define matches (vector->list (vector-filter archetype-match? (vector-filter true? entities))))
   matches)
 
-(define (entity->components e)
-  ;; XXX Lots of allocation
-  (define res null)
-  (define idx 0)
-  (define lst (vector->list e))
-  (for-each
-   (λ (x)
-     (when x
-       (set! res (append res (list (vector-ref reverse-component-registry idx)))))
-     (set! idx (add1 idx)))
-   lst)
-  res)
+(define (true? x)
+  x)
 
 ;; this is an attempt to simplify modifying entities
 (define plus add-components-to-entity)
