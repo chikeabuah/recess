@@ -492,18 +492,17 @@
 ;; get all the entities in the current world that match this archetype
 ;; the arguments are: first component, rest of the components
 (define (lookup archetype . rest)
-  ;; XXX Lots of allocation
-  (define entities (world-entities (current-world)))
+  (define entities (world-entities (current-world)))  
   (define (archetype-match? e)
-    (if e
-        (begin
-          (let ([flag #t]
-                [idxs (map component-index (cons archetype rest))])
-            (for-each
-             (λ (idx) (when (not (vector-ref e idx)) (set! flag #f)))
-             idxs)
-            flag))
-        #f))
+    (if
+     e
+     (begin
+       (let* ([flag #t]
+              [check? (λ (c) (unless (vector-ref e (component-index c)) (set! flag #f)))])
+         (check? archetype)
+         (for-each check? rest)
+       flag))
+     #f))
   (define matches (vector->list (vector-filter archetype-match? entities)))
   matches)
 
