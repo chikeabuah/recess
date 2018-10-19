@@ -112,6 +112,7 @@
 
 (define (set-entity! e expr ref)
   (define idx (hash-ref component-registry ref))
+  ;;; XXX ALLOCATION
   (vector-set! e idx (struct-copy component (vector-ref e idx) [proto expr]))
   e)
 
@@ -494,9 +495,12 @@
   ;; XXX Lots of allocation
   (define entities (world-entities (current-world)))
   (define (archetype-match? e)
-    (subset?
-     (list->set (map component-id (cons archetype rest)))
-     (list->set (vector->list (vector-map component-id (vector-filter true? e))))))
+    (define flag #t)
+    (define idxs (map component-index (cons archetype rest)))
+    (for-each
+     (λ (idx) (when (not (vector-ref e idx)) (set! flag #f)))
+     idxs)
+    flag)
   (define matches (vector->list (vector-filter archetype-match? (vector-filter true? entities))))
   matches)
 
