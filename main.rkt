@@ -104,9 +104,6 @@
     (remove-entity-from-world! e (current-world)))
   e)
 
-;; check if it's a component with data or not
-(define (get-cmpnt-val cmpnt) (if (component-proto cmpnt) (component-proto cmpnt) #f))
-
 (define (add-entities! cmpnts n)
   (map add-entity! (make-list n cmpnts)))
 
