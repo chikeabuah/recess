@@ -246,15 +246,17 @@
          (and syscond evcond entcond))]))
 
 ;; helpers for determining world termination conditions
+;; checks: is every system disabled?
 (define (systems-condition? systems)
-  ;; XXX lots of allocation
+  (define flag #t)
+  ;; allocation
   (define active-sys-ids (map system-id systems))
   (define (active-sys? sys) (member (system-id sys) active-sys-ids))
-  ;; TODO compose
-  (define active-systems
-    (filter active-sys? (filter system? (world-dependency-graph (current-world)))))
-  (define (disabled? sys) (not (system-enabled sys)))
-  (andmap disabled? active-systems))
+  (define g (world-dependency-graph (current-world)))
+  (for-each
+   (λ (v) (when (and (system? v) (active-sys? v) (system-enabled v)) (set! flag #f)))
+   g)
+  flag)
 
 (define (events-condition? events)
   #t)
