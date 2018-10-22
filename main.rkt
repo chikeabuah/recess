@@ -158,7 +158,11 @@
 
 ;; we can use parameters for general world managament and bookkeeping
 (define current-world (make-parameter #f))
-(define current-events (make-parameter (make-immutable-hasheq)))
+(define EVIDX 0)
+(define (increment-evidx!)
+  (set! EVIDX (add1 EVIDX)))
+(define EVMAX 100)
+(define current-events (make-parameter (make-vector EVMAX #f)))
 (define start-time (make-parameter (current-seconds)))
 
 ;; initialize, iterate, terminate at some point
@@ -225,9 +229,8 @@
 ;; the idea here is to poll the events by examing the hash values
 ;; if the hash value is a thunk we invoke it
 (define (poll-events evnts)
-  (-> hash-eq? hash-eq?)
-  (for/hasheq ([(k v) (in-hash evnts)])
-    (values k (if (procedure? v) (v) v))))
+  (-> vector? vector?)
+  (for/vector ([v evnts]) (if (procedure? v) (v) v)))
 
 (define-syntax (because stx)
   (syntax-parse stx
@@ -271,49 +274,60 @@
 ;; in addition to an implicit event matching the system's name
 ;; events and systems have event generics
 (define-generics event-generic
-  [event-generic-name event-generic])
+  [event-generic-name event-generic]
+  [event-generic-idx event-generic])
 
-(struct event (name zero plus)
+(struct event (name zero plus evidx)
   #:methods gen:event-generic
   [(define (event-generic-name event-generic)
-     (event-name event-generic))])
+     (event-name event-generic))
+   (define (event-generic-idx event-generic)
+     (event-evidx event-generic))])
 
 (struct event:source event (input))
 (struct event:sink event (output))
 (struct event:transform event (f))
 
-(define (create-event name [zero (list)] [plus (λ (x y) y)])
-  (event name zero plus))
-
-(define (set-event key value)
-  (hash-set (current-events) key value))
+(define event-registry (make-hasheq))
 
 (define-syntax (define-event stx)
   (syntax-parse stx
     [(_ name (~optional zero) (~optional plus))
      #'(begin
-         (define name (event 'name (~? zero (list)) (~? plus (λ (former new) new))))
+         (define name (event 'name (~? zero (list)) (~? plus (λ (former new) new)) EVIDX))
          ;; record it and it's initial value in the events table
-         (current-events (hash-set (current-events) name (event-zero name)))
+         (vector-set! (current-events) EVIDX (event-zero name))
+         (hash-set! event-registry name EVIDX)
+         (increment-evidx!)
          name)]))
 
 ;;; i'm imagining a library of pre-defined source events
 
+;; TODO: more general define-event macro
+
 ;; image event
-(define image/e (event:sink 'image/e (list) append #f))
-(current-events (hash-set (current-events) image/e (list)))
+(define image/e (event:sink 'image/e (list) append EVIDX #f))
+(vector-set! (current-events) EVIDX (event-zero image/e))
+(hash-set! event-registry image/e EVIDX)
+(increment-evidx!)
 
 ;; clock event
-(define clock/e (event:source 'clock/e #f #f #f))
-(current-events (hash-set (current-events) clock/e #f))
+(define clock/e (event:source 'clock/e #f #f EVIDX #f))
+(vector-set! (current-events) EVIDX (event-zero clock/e))
+(hash-set! event-registry clock/e EVIDX)
+(increment-evidx!)
 
 ;; key event
-(define key/e (event:source 'key/e #f #f #f))
-(current-events (hash-set (current-events) key/e #f))
+(define key/e (event:source 'key/e #f #f EVIDX #f))
+(vector-set! (current-events) EVIDX (event-zero key/e))
+(hash-set! event-registry key/e EVIDX)
+(increment-evidx!)
 
 ;; mouse event
-(define mouse/e (event:source 'mouse/e #f #f #f))
-(current-events (hash-set (current-events) mouse/e #f))
+(define mouse/e (event:source 'mouse/e #f #f EVIDX #f))
+(vector-set! (current-events) EVIDX (event-zero mouse/e))
+(hash-set! event-registry mouse/e EVIDX)
+(increment-evidx!)
 
 ;;; define-system syntax and identifier bindings
 
@@ -382,14 +396,17 @@
 
 ;; we can use this struct to persist system values between iterations
 (struct system
-  (id body in state pre enabled query map reduce post out)
+  (id body in state pre enabled query map reduce post out evidx)
   #:methods gen:system-generic []
   #:methods gen:event-generic
   [(define (event-generic-name event-generic)
-     (system-id event-generic))])
+     (system-id event-generic))
+   (define (event-generic-idx event-generic)
+     (system-evidx event-generic))])
 
 (define (create-system
          name
+         evidx
          [in #f]
          [out #f]
          [body #f]
@@ -400,7 +417,7 @@
          [map  #f]
          [reduce #f]
          [post  #f])
-  (system name body in state pre enabled query map reduce post out))
+  (system name body in state pre enabled query map reduce post out evidx))
 
 (define-syntax (define-system stx)
   (syntax-parse stx
@@ -423,7 +440,7 @@
      #'(begin
          (define system-name
            (create-system
-            'system-name (list evt ...) (list out-evt ...)
+            'system-name EVIDX (list evt ...) (list out-evt ...)
             ;; system body
             (λ (sys)
               (define prior-state (system-state sys))
@@ -437,7 +454,7 @@
                 (match-define (list evt-name ...) evts)
                 (~? (begin post-body ...) (void)))
               (define state-0 (if prior-state prior-state (~? initial-state #f)))
-              (define get-event-vals (λ (ev) (hash-ref (current-events) ev)))
+              (define get-event-vals (λ (ev) (vector-ref (current-events) (event-generic-idx ev))))
               (define event-vals
                 ;; XXX Lots of allocation
                 (map get-event-vals (filter event-generic? (list evt ...))))
@@ -462,14 +479,13 @@
               (define (output-events-fun state-name pre-name map-name reduce-name)
                 (~?
                  (begin
-                   (current-events
-                    (hash-set
+                    (vector-set!
                      (current-events)
-                     out-evt
+                     (event-generic-idx out-evt)
                      ;; combine events
                      (~? ((event-plus out-evt)
-                          (hash-ref (current-events) out-evt)
-                          (begin evt-val-body ...)) (void)))) ...)
+                          (vector-ref (current-events) (event-generic-idx out-evt))
+                          (begin evt-val-body ...)) (void))) ...)
                  (void))
                 (void))
               (define output-events
@@ -480,11 +496,11 @@
               ;; this helps with checking the world termination condition
               ;; between iterations
               (define new-sys (struct-copy system system-name [state state-2] [enabled enabled]))
-              (current-events (hash-set (current-events) new-sys #f))
-              (current-events (hash-remove (current-events) system-name))
+              (vector-set! (current-events) EVIDX new-sys)
               (set! system-name new-sys)
               new-sys)))
-         (current-events (hash-set (current-events) system-name #f))
+         (vector-set! (current-events) EVIDX #f)
+         (increment-evidx!)
          system-name)]))
 
 
@@ -500,7 +516,7 @@
               [check? (λ (c) (unless (vector-ref e (component-index c)) (set! flag #f)))])
          (check? archetype)
          (for-each check? rest)
-       flag))
+         flag))
      #f))
   (define matches (vector->list (vector-filter archetype-match? entities)))
   matches)
