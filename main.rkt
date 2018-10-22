@@ -228,9 +228,10 @@
 
 ;; the idea here is to poll the events by examing the hash values
 ;; if the hash value is a thunk we invoke it
+;; TODO: currently unused, remove?
 (define (poll-events evnts)
   (-> vector? vector?)
-  (for/vector ([v evnts]) (if (procedure? v) (v) v)))
+  evnts)
 
 (define-syntax (because stx)
   (syntax-parse stx

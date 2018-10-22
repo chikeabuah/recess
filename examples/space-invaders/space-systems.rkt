@@ -66,7 +66,7 @@
   #:query en (lookup Enemy Alive)
   #:map _
   (when
-      (close-enough? 10 (get en 'Position) (get-entity-posns (lookup Bullet Friendly)))
+      (close-enough? 20 (get en 'Position) (get-entity-posns (lookup Bullet Friendly)))
     (let* ([e (car (lookup Score))]
           [score (get e 'Score)])
       (~>! e (+ score 1) 'Score))
