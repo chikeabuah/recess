@@ -86,13 +86,21 @@
 ;; and keep the other info (ref, idx in a hash table)
 ;; each component will be in its cidx spot in the vector
 
+;; to do this we're going to need some special values
+;; to represent:
+;; the absence of a component (because the component's value could literally be #f)
+;; the presence of a component with no value (like Alive)
+
+(define ABSENCE (gensym))
+(define (absent? x) (eq? x ABSENCE))
+(define (present? x) (not (eq? x ABSENCE)))
+(define PRESENCE (gensym))
+
 ;; accepts a list of components
 (define/contract (add-entity! cmpnts)
   (->  (listof component?) vector?)
-  (define e (make-vector CMAX #f))
-  (for-each
-   (λ (c) (vector-set! e (component-index c) c))
-   cmpnts)
+  (define e (make-vector CMAX ABSENCE))
+  (add-components-to-entity! e cmpnts)
   ;; add e to world
   (when (current-world)
     (add-entity-to-world! e EIDX (current-world))
@@ -109,8 +117,7 @@
 
 (define (set-entity! e expr ref)
   (define idx (hash-ref component-registry ref))
-  ;;; XXX ALLOCATION
-  (vector-set! e idx (struct-copy component (vector-ref e idx) [proto expr]))
+  (vector-set! e idx expr)
   e)
 
 (define (batch-set-entity! e hsh)
@@ -128,25 +135,24 @@
       (and (equal? d e) i)))
   (vector-set! (world-entities wrld) rm-idx #f))
 
-(define (add-components-to-entity e cmpnts)
+(define (add-components-to-entity! e cmpnts)
   (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
   (for-each
-   (λ (c) (vector-set! e (component-index c) c))
+   (λ (c) (vector-set! e (component-index c) (if (component-proto c) (component-proto c) PRESENCE)))
    cs)
   e)
 
-(define (remove-components-from-entity e cmpnts)
+(define (remove-components-from-entity! e cmpnts)
   (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
   (for-each
-   (λ (c) (vector-set! e (component-index c) #f))
+   (λ (c) (vector-set! e (component-index c) ABSENCE))
    cs)
   e)
 
 ;; get the value of a component described by ref
 ;; from the entity ent
 (define (get e ref)
-  (define amb (vector-ref e (hash-ref component-registry ref)))
-  (if (component? amb) (component-proto amb) amb))
+  (vector-ref e (hash-ref component-registry ref)))
 
 ;; worlds
 ;; entities are a vector
@@ -514,7 +520,7 @@
      e
      (begin
        (let* ([flag #t]
-              [check? (λ (c) (unless (vector-ref e (component-index c)) (set! flag #f)))])
+              [check? (λ (c) (unless (present? (vector-ref e (component-index c))) (set! flag #f)))])
          (check? archetype)
          (for-each check? rest)
          flag))
@@ -526,6 +532,6 @@
   x)
 
 ;; this is an attempt to simplify modifying entities
-(define plus add-components-to-entity)
+(define plus add-components-to-entity!)
 
-(define minus remove-components-from-entity)
+(define minus remove-components-from-entity!)
