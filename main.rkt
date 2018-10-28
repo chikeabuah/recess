@@ -463,8 +463,8 @@
               (define state-0 (if prior-state prior-state (~? initial-state #f)))
               (define get-event-vals (λ (ev) (vector-ref (current-events) (event-generic-idx ev))))
               (define event-vals
-                ;; XXX Lots of allocation
-                (map get-event-vals (filter event-generic? (list evt ...))))
+                ;; XXX allocation
+                (map get-event-vals (list evt ...)))
               (define pre-val-0 (pre-body-fun state-0 event-vals))
               (define state-1 (if (not (void? pre-val-0)) pre-val-0 state-0))
               (define input-events (let-values ([(evt-name ...) (values evt ...)])
