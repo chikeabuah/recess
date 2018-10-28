@@ -20,7 +20,7 @@
 ;; iterate through the graph until the world's termination conditions are fulfilled
 (define (run/big-bang args)
   (match-define (list start-time stop-func current-events step-world current-world) args)
-  (big-bang (big-bang-recess-world (make-immutable-hasheq) current-world (list))
+  (big-bang (big-bang-recess-world (make-vector EVMAX #f) current-world (list))
     (on-tick (big-bang-step-world start-time current-events step-world) 1)
     (to-draw big-bang-draw-recess)
     (on-key big-bang-recess-key)
@@ -34,30 +34,32 @@
     (match-define (big-bang-recess-world pe crw lo) w)
     ;; sync up with new things that have happened
     ;; right now this means merging the pending events into the current events
-    (define events-so-far
-      (hash-set
-       pe
-       clock/e
-       (- (current-seconds) (start-time))))
-    (current-events (hash-union (current-events) events-so-far #:combine (λ (old new) new)))
-    ;; need to reset sink events
+    (vector-set!
+     pe
+     (hash-ref event-registry clock/e)
+     (- (current-seconds) (start-time)))
     (current-events
-     (make-immutable-hasheq
-      (map
+     (for/vector ([new pe] [old (current-events)] ) (if new new old)))
+    
+    (define (reset-events reset?)
+      (for-each
        (λ (event-assoc)
-         (match-define (cons ev val) event-assoc)
-         (if (event:sink? ev)
-             (cons ev (event-zero ev))
-             event-assoc))
-       (hash->list (current-events)))))
+         (match-define (cons ev idx) event-assoc)
+         (when (reset? ev)
+           (vector-set! (current-events) idx (event-zero ev))))
+       (hash->list event-registry)))
+    
+    ;; need to reset sink events (and key)
+    (reset-events (λ (ev) (event:sink? ev)))
     ;;then step
-    (displayln "executing recess graph...")
+    ;(displayln "executing recess graph...")
     (step-world)
+    (reset-events (λ (ev) (eq? key/e ev)))
     ;; get sink events, right now we only care about images
-    (define image-outputs (hash-ref (current-events) image/e))
+    (define image-outputs (vector-ref (current-events) (hash-ref event-registry image/e)))
     ;; reset pending events and produce output
     (struct-copy big-bang-recess-world w
-                 [pending-events (make-immutable-hasheq)]
+                 [pending-events (make-vector EVMAX #f)]
                  [last-output image-outputs])))
 
 ;; `on-key` and `on-mouse` events record something inside a custom made world struct

@@ -256,9 +256,13 @@
 ;; checks: is every system disabled?
 (define (systems-condition? systems)
   (define flag #t)
-  ;; allocation
-  (define active-sys-ids (map system-id systems))
-  (define (active-sys? sys) (member (system-id sys) active-sys-ids))
+  (define (active-sys? sys)
+    (define flag #f)
+    (define check-id (system-id sys))
+    (for-each
+     (λ (sys) (when (eq? check-id (system-id sys)) (set! flag #t)))
+     systems)
+    flag)
   (define g (world-dependency-graph (current-world)))
   (for-each
    (λ (v) (when (and (system? v) (active-sys? v) (system-enabled v)) (set! flag #f)))
