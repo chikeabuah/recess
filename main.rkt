@@ -63,6 +63,7 @@
     [(_ name [~optional given-proto])
      (with-syntax ([name? (format-id #'name "~a?" (syntax-e #'name))])
        #'(begin
+           (define (name? e) (present? (vector-ref e CIDX))) 
            (define name (create-component 'name (~? given-proto #f)))
            name))]))
 

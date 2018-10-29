@@ -76,7 +76,7 @@ playing area (random number range) smaller.
   #:in [seconds clock/e]
   #:query e (lookup Player)
   ;; when there are only 5 players left it's all sharks and the rest are seaweed
-  #:map mapval #;(displayln (get e 'Guess)) (set! e (random OCEAN) 'Guess) e
+  #:map mapval #;(displayln (get e 'Guess)) (~>! e (random OCEAN) 'Guess) e
   #:out [shark-guesses/e (map (λ (en) (get en 'Guess)) (filter Shark? mapval))])
 
 (define-system shark-bite
@@ -84,14 +84,14 @@ playing area (random number range) smaller.
   #:in [on-cross cross-my-ocean]
   #:in [sharks shark-guesses/e]
   #:query e (lookup Fish)
-  #:map _ (when (member (get e 'Guess) sharks) (- (+ e Seaweed) Fish Player)))
+  #:map _ (when (member (get e 'Guess) sharks) (minus (plus e Seaweed) Fish Player)))
 
 ;; really these do the same thing except just in two different phases
 (define-system seaweed-attack
   #:in [seconds clock/e]
   #:in [on-bite shark-bite]
   #:query e (lookup Fish)
-  #:map _ (when (member (get e 'Guess) (lookup Seaweed)) (- (+ e Seaweed) Fish Player)))
+  #:map _ (when (member (get e 'Guess) (lookup Seaweed)) (minus (plus e Seaweed) Fish Player)))
 
 (define-system vis-players
   #:in [seconds clock/e]
