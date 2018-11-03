@@ -121,12 +121,14 @@
   ;; simulation, records the output in the world struct
   (define (lux-step-world start-time current-events step-world w)
     (match-define (lux-recess-world rs->d pe crw lo) w)
+    ;;beginning run
+    (dte "beginning step")
     ;; sync up with new things that have happened
     ;; right now this means merging the pending events into the current events
     (vector-set!
      pe
      (hash-ref event-registry clock/e)
-     (- (current-seconds) (start-time)))
+     (- (current-milliseconds) (start-time)))
     (current-events
      (for/vector ([new pe] [old (current-events)] ) (if new new old)))
     

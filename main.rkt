@@ -170,7 +170,19 @@
   (set! EVIDX (add1 EVIDX)))
 (define EVMAX 100)
 (define current-events (make-parameter (make-vector EVMAX #f)))
-(define start-time (make-parameter (current-seconds)))
+(define start-time (make-parameter (current-milliseconds)))
+
+;; profiling
+
+(define PROFILING? #t)
+
+;; display timed event
+(define (dte descr)
+  (begin
+    (display descr)
+    (display "  ")
+    (display (- (current-milliseconds) (start-time)))
+    (displayln "  ")))
 
 ;; initialize, iterate, terminate at some point
 ;; create a topological ordering of the recess
@@ -183,7 +195,7 @@
         (~seq #:run run-expr:id))
      #'(parameterize ([current-world
                        (world (gensym) (make-vector EMAX #f) (unweighted-graph/directed '()))]
-                      [start-time (current-seconds)]
+                      [start-time (current-milliseconds)]
                       [current-events (poll-events (current-events))])
          (begin
            (define systems (list system-name ...))
@@ -225,7 +237,10 @@
         [(system? arg)
          ;(display "executing ")(display arg)(displayln (system-id arg))
          ;; this call returns the system for the next iteration
-         (define new-system-state ((system-body arg) arg)) new-system-state]
+         (dte "before system exec")
+         (define new-system-state ((system-body arg) arg))
+         (dte "after system exec")
+         new-system-state]
         [else
          ;(display "unknown")
          ;(displayln arg)
