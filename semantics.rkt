@@ -22,10 +22,10 @@
   (entity-E ::= (identity (v ... E e ...)))
   (ent-map-e ::=
            (set-entity entity index e)
-           (ent-map ...))
+           (ent-map-e ...))
   (ent-map-v ::=
            (set-entity entity index v)
-           (ent-map ...))
+           (ent-map-v ...))
   (ent-map-E ::=
            (set-entity entity index E)
            (ent-map-E ...)))
