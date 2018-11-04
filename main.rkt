@@ -175,7 +175,7 @@
 
 ;; profiling
 
-(define PROFILING? #f)
+(define PROFILING? #t)
 
 ;; display timed event
 (define (dte descr)

@@ -1,4 +1,5 @@
 
+;; LOG ENTRY 1
 below total step time is ~24ms
 all systems take ~6ms (25%) total time to run
 
@@ -29,4 +30,102 @@ before system exec  5821
 after system exec  5821  
 before system exec  5821  
 after system exec  5821  
-beginning step  5840 
+beginning step  5840
+
+;; LOG ENTRY 2
+2 linear allocations were removed since entry #1
+looking at runs like the samples below it seems that in a given step:
+- recess code usually takes about 3-5ms to run (in rare cases longer)
+- 3ms is the minimum time right now for recess
+- lux+mode-lambda consistently runs at ~20ms on my pc
+
+beginning step  1247  
+before system exec  1247  
+after system exec  1247  
+before system exec  1247  
+after system exec  1247  
+before system exec  1247  
+after system exec  1247  
+before system exec  1247  
+after system exec  1247  
+before system exec  1248  
+after system exec  1248  
+before system exec  1248  
+after system exec  1248  
+before system exec  1248  
+after system exec  1248  
+before system exec  1248  
+after system exec  1249  
+before system exec  1249  
+after system exec  1249  
+before system exec  1249  
+after system exec  1249  
+before system exec  1249  
+after system exec  1249  
+before system exec  1249  
+after system exec  1250  
+before system exec  1250  
+after system exec  1250  
+done resetting events  1250  
+beginning step  1270
+---
+beginning step  1838  
+before system exec  1838  
+after system exec  1838  
+before system exec  1838  
+after system exec  1838  
+before system exec  1839  
+after system exec  1839  
+before system exec  1839  
+after system exec  1839  
+before system exec  1839  
+after system exec  1840  
+before system exec  1840  
+after system exec  1840  
+before system exec  1840  
+after system exec  1840  
+before system exec  1840  
+after system exec  1841  
+before system exec  1842  
+after system exec  1842  
+before system exec  1842  
+after system exec  1842  
+before system exec  1842  
+after system exec  1842  
+before system exec  1842  
+after system exec  1843  
+before system exec  1843  
+after system exec  1843  
+done resetting events  1843  
+beginning step  1863  
+---
+beginning step  3058  
+before system exec  3058  
+after system exec  3058  
+before system exec  3058  
+after system exec  3058  
+before system exec  3058  
+after system exec  3058  
+before system exec  3058  
+after system exec  3058  
+before system exec  3058  
+after system exec  3058  
+before system exec  3058  
+after system exec  3058  
+before system exec  3058  
+after system exec  3060  
+before system exec  3060  
+after system exec  3061  
+before system exec  3061  
+after system exec  3061  
+before system exec  3061  
+after system exec  3061  
+before system exec  3061  
+after system exec  3061  
+before system exec  3061  
+after system exec  3061  
+before system exec  3061  
+after system exec  3061  
+done resetting events  3062  
+beginning step  3081  
+
