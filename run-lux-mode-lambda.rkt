@@ -7,6 +7,7 @@
   racket/draw
   racket/class
   racket/vector
+  racket/sequence
   lang/posn
   #;(prefix-in image: 2htdp/image)
   lux
@@ -121,12 +122,14 @@
   ;; simulation, records the output in the world struct
   (define (lux-step-world start-time current-events step-world w)
     (match-define (lux-recess-world rs->d pe crw lo) w)
+    ;;beginning run
+    (dte "beginning step")
     ;; sync up with new things that have happened
     ;; right now this means merging the pending events into the current events
     (vector-set!
      pe
      (hash-ref event-registry clock/e)
-     (- (current-seconds) (start-time)))
+     (- (current-milliseconds) (start-time)))
     (current-events
      (for/vector ([new pe] [old (current-events)] ) (if new new old)))
     
@@ -147,8 +150,13 @@
     ;; get sink events, right now we only care about images
     (define image-outputs (vector-ref (current-events) (hash-ref event-registry image/e)))
     ;; reset pending events and produce output
+    (dte "done resetting events")
+    (define idx 0)
+    (sequence-for-each
+     (λ (x) (begin (vector-set! pe idx #f) (set! idx (add1 idx))))
+     pe)
     (struct-copy lux-recess-world w
-                 [pending-events (make-vector EVMAX #f)]
+                 [pending-events pe]
                  [last-output image-outputs]))
 
 
