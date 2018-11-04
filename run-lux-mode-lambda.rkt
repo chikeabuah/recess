@@ -7,7 +7,6 @@
   racket/draw
   racket/class
   racket/vector
-  racket/sequence
   lang/posn
   #;(prefix-in image: 2htdp/image)
   lux
@@ -87,21 +86,14 @@
 ;;;
 
 (define db (make-sprite-db))
-
 (add-sprite!/value db 'fish  fish-p)
 (add-sprite!/value db 'shark shark-p)
 (add-sprite!/value db 'seaweed seaweed-p)
 (add-sprite!/value db 'score score-p)
-(for-each
- (λ (ell i) 
-   (add-sprite!/value db (format-symbol "ellipse-~a" (string->symbol (number->string i))) ell))
- ellipse10 (range 10))
-(for-each
- (λ (txt i) 
-   (add-sprite!/value db (format-symbol "text-~a" (string->symbol (number->string i))) txt))
- text10 (range 10))
-
-
+(for ([ell ellipse10] [i (range 10)])
+  (add-sprite!/value db (format-symbol "ellipse-~a" (string->symbol (number->string i))) ell))
+(for ([txt text10] [i (range 10)])
+  (add-sprite!/value db (format-symbol "text-~a" (string->symbol (number->string i))) txt))
 (define cdb (compile-sprite-db db))
 
 ;;;
@@ -129,7 +121,7 @@
     (vector-set!
      pe
      (hash-ref event-registry clock/e)
-     (- (current-milliseconds) (start-time)))
+     (- (current-inexact-milliseconds) (start-time)))
     (current-events
      (for/vector ([new pe] [old (current-events)] ) (if new new old)))
     
@@ -152,9 +144,7 @@
     ;; reset pending events and produce output
     (dte "done resetting events")
     (define idx 0)
-    (sequence-for-each
-     (λ (x) (begin (vector-set! pe idx #f) (set! idx (add1 idx))))
-     pe)
+    (for ([ev pe]) (begin (vector-set! pe idx #f) (set! idx (add1 idx))))
     (struct-copy lux-recess-world w
                  [pending-events pe]
                  [last-output image-outputs]))

@@ -15,8 +15,9 @@
   racket/string
   racket/list
   racket/set
-  racket/sequence
   racket/vector)
+
+(define PROFILING? #f)
 
 (define (~>! id expr [ref (λ (x) #f)])
   (set-entity! id expr ref))
@@ -139,16 +140,14 @@
 
 (define (add-components-to-entity! e cmpnts)
   (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
-  (for-each
-   (λ (c) (vector-set! e (component-index c) (if (component-proto c) (component-proto c) PRESENCE)))
-   cs)
+  (for ([c cs])
+    (vector-set! e (component-index c) (if (component-proto c) (component-proto c) PRESENCE)))
   e)
 
 (define (remove-components-from-entity! e cmpnts)
   (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
-  (for-each
-   (λ (c) (vector-set! e (component-index c) ABSENCE))
-   cs)
+  (for ([c cs])
+   (vector-set! e (component-index c) ABSENCE))
   e)
 
 ;; get the value of a component described by ref
@@ -171,11 +170,9 @@
   (set! EVIDX (add1 EVIDX)))
 (define EVMAX 100)
 (define current-events (make-parameter (make-vector EVMAX #f)))
-(define start-time (make-parameter (current-milliseconds)))
+(define start-time (make-parameter (current-inexact-milliseconds)))
 
 ;; profiling
-
-(define PROFILING? #t)
 
 ;; display timed event
 (define (dte descr)
@@ -183,7 +180,7 @@
     (begin
       (display descr)
       (display "  ")
-      (display (- (current-milliseconds) (start-time)))
+      (display (- (current-inexact-milliseconds) (start-time)))
       (displayln "  "))))
 
 ;; initialize, iterate, terminate at some point
@@ -197,7 +194,7 @@
         (~seq #:run run-expr:id))
      #'(parameterize ([current-world
                        (world (gensym) (make-vector EMAX #f) (unweighted-graph/directed '()))]
-                      [start-time (current-milliseconds)]
+                      [start-time (current-inexact-milliseconds)]
                       [current-events (poll-events (current-events))])
          (begin
            (define systems (list system-name ...))
@@ -249,9 +246,7 @@
          (raise "recess: unknown graph node type")]))
     (define g (world-dependency-graph (current-world)))
     (define idx 0)
-    (sequence-for-each
-     (λ (node) (begin (vector-set! g idx (step-func node)) (set! idx (add1 idx))))
-     g)
+    (for ([node g]) (begin (vector-set! g idx (step-func node)) (set! idx (add1 idx))))
     (current-world (struct-copy world (current-world) [dependency-graph g]))))
 
 ;; the idea here is to poll the events by examing the hash values
@@ -281,14 +276,11 @@
   (define (active-sys? sys)
     (define flag #f)
     (define check-id (system-id sys))
-    (for-each
-     (λ (sys) (when (eq? check-id (system-id sys)) (set! flag #t)))
-     systems)
+    (for ([sys systems])
+     (when (eq? check-id (system-id sys)) (set! flag #t)))
     flag)
   (define g (world-dependency-graph (current-world)))
-  (sequence-for-each
-   (λ (v) (when (and (system? v) (active-sys? v) (system-enabled v)) (set! flag #f)))
-   g)
+  (for ([node g]) (when (and (system? node) (active-sys? node) (system-enabled node)) (set! flag #f)))
   flag)
 
 (define (events-condition? events)
