@@ -174,15 +174,16 @@
 
 ;; profiling
 
-(define PROFILING? #t)
+(define PROFILING? #f)
 
 ;; display timed event
 (define (dte descr)
-  (begin
-    (display descr)
-    (display "  ")
-    (display (- (current-milliseconds) (start-time)))
-    (displayln "  ")))
+  (when PROFILING?
+    (begin
+      (display descr)
+      (display "  ")
+      (display (- (current-milliseconds) (start-time)))
+      (displayln "  "))))
 
 ;; initialize, iterate, terminate at some point
 ;; create a topological ordering of the recess
@@ -216,7 +217,7 @@
               system-in-out-name-lists
               (world-dependency-graph (current-world))))
            (display (graphviz (cdr first-world-graph-pair)))
-           (define first-tsorted-world (tsort (car  first-world-graph-pair)))
+           (define first-tsorted-world (tsort (car first-world-graph-pair)))
            (current-world (struct-copy world (current-world) [dependency-graph first-tsorted-world]))
            (run-expr (list
                       start-time
@@ -245,6 +246,7 @@
          ;(display "unknown")
          ;(displayln arg)
          (raise "recess: unknown graph node type")]))
+    ;; allocation
     (define new-world-graph (map step-func (world-dependency-graph (current-world))))
     (current-world (struct-copy world (current-world) [dependency-graph new-world-graph]))))
 
@@ -504,13 +506,13 @@
               (define (output-events-fun state-name pre-name map-name reduce-name)
                 (~?
                  (begin
-                    (vector-set!
-                     (current-events)
-                     (event-generic-idx out-evt)
-                     ;; combine events
-                     (~? ((event-plus out-evt)
-                          (vector-ref (current-events) (event-generic-idx out-evt))
-                          (begin evt-val-body ...)) (void))) ...)
+                   (vector-set!
+                    (current-events)
+                    (event-generic-idx out-evt)
+                    ;; combine events
+                    (~? ((event-plus out-evt)
+                         (vector-ref (current-events) (event-generic-idx out-evt))
+                         (begin evt-val-body ...)) (void))) ...)
                  (void))
                 (void))
               (define output-events

@@ -7,6 +7,7 @@
   racket/draw
   racket/class
   racket/vector
+  racket/sequence
   lang/posn
   #;(prefix-in image: 2htdp/image)
   lux
@@ -149,8 +150,13 @@
     ;; get sink events, right now we only care about images
     (define image-outputs (vector-ref (current-events) (hash-ref event-registry image/e)))
     ;; reset pending events and produce output
+    (dte "done resetting events")
+    (define idx 0)
+    (sequence-for-each
+     (λ (x) (begin (vector-set! pe idx #f) (set! idx (add1 idx))))
+     pe)
     (struct-copy lux-recess-world w
-                 [pending-events (make-vector EVMAX #f)]
+                 [pending-events pe]
                  [last-output image-outputs]))
 
 
