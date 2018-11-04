@@ -15,6 +15,7 @@
   racket/string
   racket/list
   racket/set
+  racket/sequence
   racket/vector)
 
 (define (~>! id expr [ref (λ (x) #f)])
@@ -217,7 +218,7 @@
               system-in-out-name-lists
               (world-dependency-graph (current-world))))
            (display (graphviz (cdr first-world-graph-pair)))
-           (define first-tsorted-world (tsort (car first-world-graph-pair)))
+           (define first-tsorted-world (list->vector (tsort (car first-world-graph-pair))))
            (current-world (struct-copy world (current-world) [dependency-graph first-tsorted-world]))
            (run-expr (list
                       start-time
@@ -239,16 +240,19 @@
          ;(display "executing ")(display arg)(displayln (system-id arg))
          ;; this call returns the system for the next iteration
          (dte "before system exec")
-         (define new-system-state ((system-body arg) arg))
+         (define new-sys ((system-body arg) arg))
          (dte "after system exec")
-         new-system-state]
+         new-sys]
         [else
          ;(display "unknown")
          ;(displayln arg)
          (raise "recess: unknown graph node type")]))
-    ;; allocation
-    (define new-world-graph (map step-func (world-dependency-graph (current-world))))
-    (current-world (struct-copy world (current-world) [dependency-graph new-world-graph]))))
+    (define g (world-dependency-graph (current-world)))
+    (define idx 0)
+    (sequence-for-each
+     (λ (node) (begin (vector-set! g idx (step-func node)) (set! idx (add1 idx))))
+     g)
+    (current-world (struct-copy world (current-world) [dependency-graph g]))))
 
 ;; the idea here is to poll the events by examing the hash values
 ;; if the hash value is a thunk we invoke it
@@ -282,7 +286,7 @@
      systems)
     flag)
   (define g (world-dependency-graph (current-world)))
-  (for-each
+  (sequence-for-each
    (λ (v) (when (and (system? v) (active-sys? v) (system-enabled v)) (set! flag #f)))
    g)
   flag)
