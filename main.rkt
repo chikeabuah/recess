@@ -140,13 +140,13 @@
 
 (define (add-components-to-entity! e cmpnts)
   (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
-  (for ([c cs])
+  (for ([c (in-list cs)])
     (vector-set! e (component-index c) (if (component-proto c) (component-proto c) PRESENCE)))
   e)
 
 (define (remove-components-from-entity! e cmpnts)
   (define cs (if (list? cmpnts) cmpnts (list cmpnts)))
-  (for ([c cs])
+  (for ([c (in-list cs)])
    (vector-set! e (component-index c) ABSENCE))
   e)
 
@@ -245,8 +245,9 @@
          ;(displayln arg)
          (raise "recess: unknown graph node type")]))
     (define g (world-dependency-graph (current-world)))
-    (define idx 0)
-    (for ([node g]) (begin (vector-set! g idx (step-func node)) (set! idx (add1 idx))))
+    (for ([node (in-vector g)]
+          [idx (in-naturals)])
+      (begin (vector-set! g idx (step-func node))))
     (current-world (struct-copy world (current-world) [dependency-graph g]))))
 
 ;; the idea here is to poll the events by examing the hash values
@@ -276,11 +277,12 @@
   (define (active-sys? sys)
     (define flag #f)
     (define check-id (system-id sys))
-    (for ([sys systems])
+    (for ([sys (in-list systems)])
      (when (eq? check-id (system-id sys)) (set! flag #t)))
     flag)
   (define g (world-dependency-graph (current-world)))
-  (for ([node g]) (when (and (system? node) (active-sys? node) (system-enabled node)) (set! flag #f)))
+  (for ([node (in-vector g)])
+    (when (and (system? node) (active-sys? node) (system-enabled node)) (set! flag #f)))
   flag)
 
 (define (events-condition? events)
@@ -538,7 +540,8 @@
        (let* ([flag #t]
               [check? (λ (c) (unless (present? (vector-ref e (component-index c))) (set! flag #f)))])
          (check? archetype)
-         (for-each check? rest)
+         (for ([r (in-list rest)])
+           (check? r))
          flag))
      #f))
   (define matches (vector->list (vector-filter archetype-match? entities)))

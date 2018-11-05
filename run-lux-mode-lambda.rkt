@@ -124,15 +124,12 @@
      (- (current-inexact-milliseconds) (start-time)))
     (current-events
      (for/vector ([new pe] [old (current-events)] ) (if new new old)))
-    
     (define (reset-events reset?)
-      (for-each
-       (λ (event-assoc)
-         (match-define (cons ev idx) event-assoc)
-         (when (reset? ev)
-           (vector-set! (current-events) idx (event-zero ev))))
-       (hash->list event-registry)))
-    
+      (define (reset ev idx)
+        (when (reset? ev)
+          (vector-set! (current-events) idx (event-zero ev))))
+      (for ([(k v) (in-hash event-registry)])
+        (reset k v)))
     ;; need to reset sink events (and key)
     (reset-events (λ (ev) (event:sink? ev)))
     ;;then step
@@ -143,12 +140,12 @@
     (define image-outputs (vector-ref (current-events) (hash-ref event-registry image/e)))
     ;; reset pending events and produce output
     (dte "done resetting events")
-    (define idx 0)
-    (for ([ev pe]) (begin (vector-set! pe idx #f) (set! idx (add1 idx))))
+    (for ([ev pe]
+          [idx (in-naturals)])
+      (begin (vector-set! pe idx #f)))
     (struct-copy lux-recess-world w
                  [pending-events pe]
                  [last-output image-outputs]))
-
 
   ;; `on-key` and `on-mouse` events record something inside a custom made world struct
   (define (lux-recess-key w key-event)
