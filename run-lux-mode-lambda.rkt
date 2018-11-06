@@ -178,10 +178,7 @@
        (define draw
          (rendering-states->draw lc '() dynamic))
        (dte "finished rendering")
-       (λ args
-         (dte "render frame start")
-         (begin0 (apply draw args)
-           (dte "render frame stop"))))
+       draw)
      (define (word-event w e)
        (match-define (lux-recess-world rs->d pe crw lo) w)
        (define closed? #f)
