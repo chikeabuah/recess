@@ -143,9 +143,10 @@
     (for ([ev pe]
           [idx (in-naturals)])
       (begin (vector-set! pe idx #f)))
-    (struct-copy lux-recess-world w
-                 [pending-events pe]
-                 [last-output image-outputs]))
+    (begin0 (struct-copy lux-recess-world w
+                         [pending-events pe]
+                         [last-output image-outputs])
+      (dte "end step")))
 
   ;; `on-key` and `on-mouse` events record something inside a custom made world struct
   (define (lux-recess-key w key-event)
@@ -168,20 +169,19 @@
        60.0)
      (define (word-output w)
        (match-define (lux-recess-world rendering-states->draw pe crw image-outputs) w)
-       (define sprite-syms (map car image-outputs))
-       (define posns (map cdr image-outputs))
+       (dte "starting rendering")
        (define dynamic
-         (map
-          (λ (sprite-sym posn)
-            (sprite
-             (->fl (posn-x posn))
-             (->fl (posn-y posn))
-             (sprite-idx cdb sprite-sym) #:layer 3))
-          sprite-syms
-          posns))
-       (define static (list))
-       (define draw (rendering-states->draw lc static dynamic))
-       draw)
+         (for/list ([io (in-list image-outputs)])
+           (match-define (cons sym (posn x y)) io)           
+           (sprite (->fl x) (->fl y) (sprite-idx cdb sym)
+                   #:layer 3)))
+       (define draw
+         (rendering-states->draw lc '() dynamic))
+       (dte "finished rendering")
+       (λ args
+         (dte "render frame start")
+         (begin0 (apply draw args)
+           (dte "render frame stop"))))
      (define (word-event w e)
        (match-define (lux-recess-world rs->d pe crw lo) w)
        (define closed? #f)

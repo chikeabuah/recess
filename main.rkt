@@ -17,7 +17,7 @@
   racket/set
   racket/vector)
 
-(define PROFILING? #f)
+(define PROFILING? #t)
 
 (define (~>! id expr [ref (λ (x) #f)])
   (set-entity! id expr ref))
