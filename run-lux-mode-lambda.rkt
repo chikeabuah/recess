@@ -39,8 +39,8 @@
 ;;; SIZES
 ;;;
 
-(define W 720)
-(define H 640)
+(define W 3000)
+(define H 2000)
 (define W/2 (/ W 2.))
 (define H/2 (/ H 2.))
 
@@ -104,7 +104,7 @@
 (define bugl (layer W/2 H/2))    ; gray:       layer 0 ; too see bugs in GL
 (define bgl  (layer W/2 H/2))    ; background: layer 1
 (define ml   (layer W/2 H/2))    ; middle:     layer 2
-(define fgl  (layer W/2 H/2))    ; foreground: layer 3
+(define fgl  (layer (/ W 2.) (/ H 2.)))    ; foreground: layer 3
 (define lc   (vector bugl bgl ml fgl)) ; layer config
 
 ;; iterate through the graph until the world's termination conditions are fulfilled

@@ -7,7 +7,7 @@
 ;; when the player clears out enough columns the remaining enemies
 ;; begin to span the entire screen very quickly (axis is now centre of screen)
 (define-component Axis)
-(define-component MaxOffset 40)
+(define-component MaxOffset 300)
 (define-component CurrentOffset 0)
 ;; enemy direction flag
 (define-component Polarity #t)

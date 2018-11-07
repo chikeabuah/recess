@@ -11,7 +11,8 @@
   (map
    (λ (p x-offset) (make-posn (+ x-offset (posn-x p)) (posn-y p)))
    (make-list 8 (make-posn 40 40))
-   (map (λ (n) (* n 80)) (cdr (range 9)))))
+   ;; this number is h offset
+   (map (λ (n) (* n 300)) (cdr (range 9)))))
 
 (define (offset-row row y-offset)
   (map
@@ -23,7 +24,8 @@
   (map
    (λ (row y-offset) (offset-row row y-offset))
    (make-list 5 top-row)
-   (map (λ (n) (* n 80)) (cdr (range 6)))))
+   ;; this number is v offset
+   (map (λ (n) (* n 120)) (cdr (range 6)))))
 
 (define (draw-entities posns sprite-sym)
   (map
@@ -100,7 +102,7 @@
     (define fw (get en 'FirstWall))
     (define switch? (<= current-max-offset current-offset))
     (when switch?
-      (set! pos (make-posn (posn-x pos) (+ (posn-y pos) 5)))
+      (set! pos (make-posn (posn-x pos) (+ (posn-y pos) 1)))
       (set! polarity (not polarity))
       (set! current-offset 0))
     ;; we hit our first wall: double max offset
@@ -109,8 +111,8 @@
       (set! fw (not fw)))
     (set! current-offset (+ current-offset 2))
     (if polarity   
-        (set! pos (make-posn (+ (posn-x pos) 2) (posn-y pos)))
-        (set! pos (make-posn (- (posn-x pos) 2) (posn-y pos))))
+        (set! pos (make-posn (+ (posn-x pos) 1) (posn-y pos)))
+        (set! pos (make-posn (- (posn-x pos) 1) (posn-y pos))))
     (~~>! en (make-immutable-hasheq
               (list
                (cons 'MaxOffset current-max-offset)
