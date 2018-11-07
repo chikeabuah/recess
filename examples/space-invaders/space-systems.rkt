@@ -2,7 +2,7 @@
 
 (require recess/run-lux-mode-lambda "helpers.rkt")
 
-(define-component Position (make-posn 340 600))
+(define-component Position (make-posn 1500 1800))
 ;; in space invaders enemies initially cycle by some offset around a fixed axis
 ;; when the player clears out enough columns the remaining enemies
 ;; begin to span the entire screen very quickly (axis is now centre of screen)

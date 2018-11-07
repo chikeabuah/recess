@@ -36,11 +36,11 @@
   (define num (get n 'Score))
   (define str (number->string num))
   (define lst (filter (λ (c) (not (equal? c ""))) (string-split str "")))
-  (define offsets (map (λ (i) (make-posn (+ (* 10 i) 110) 40)) (range (length lst))))
+  (define offsets (map (λ (i) (make-posn (+ (* 30 i) 220) 40)) (range (length lst))))
   (define res (map
    (λ (ch pos) (cons (format-symbol "text-~a" (string->symbol ch)) pos))
    lst offsets))
-  (define r (append (list (cons 'score (make-posn 60 40))) res))
+  (define r (append (list (cons 'score (make-posn 100 40))) res))
   r)
 
 (define (move-player! player key)
@@ -102,7 +102,7 @@
     (define fw (get en 'FirstWall))
     (define switch? (<= current-max-offset current-offset))
     (when switch?
-      (set! pos (make-posn (posn-x pos) (+ (posn-y pos) 1)))
+      (set! pos (make-posn (posn-x pos) (+ (posn-y pos) 5)))
       (set! polarity (not polarity))
       (set! current-offset 0))
     ;; we hit our first wall: double max offset
