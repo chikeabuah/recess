@@ -51,7 +51,7 @@
   #:in [on-h-move enemy-horizontal-motion]
   #:query en (lookup Enemy)
   #:map pos (get en 'Position)
-  #:out [image/e (draw-entities pos 'ellipse-2)])
+  #:out [image/e (draw-entities pos 'red-alien-1)])
 
 (define-system enemies-shoot
   #:query en (lookup Enemy)
