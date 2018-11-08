@@ -24,7 +24,8 @@
          (event-ref number)]
   [ent-e (let ([x ent-r] ...)
            #:map (e ...)
-           #:red e)]  
+           #:red e
+           #:combine (λ (y z) e))]  
 
   ;; XXX how to do deletion?
   ;; XXX how to do new?
@@ -66,13 +67,22 @@
    ;; xxx can occur inside sys-e
    (in-hole ent-ctxt ent-r-ctxt)]
 
+  ;; entity state
   [ent-st (entity number (v ...) ent-e)]
   [ent-ctxt (entity number (v ...) hole)]
 
-  ;; xxx capture all entities
-  [sys-st (system v ent-st)]
+  ;; system state
+  [sys-st (system v (ent-st...))
+          (system
+           #:sys-st v_st
+           #:code ent-e 
+           #:done ((v ...) ...)
+           #:active ent-st
+           #:rest ((v ...)
+                   (v ...) ...))]
   [sys-ctxt (system v hole)]
-
+  
+  ;; world state
   ;; xxx capture all systems and all entities
   [world-st (world (v ...) sys-st)]
   [world-ctxt (world (v ...) hole)]
@@ -101,7 +111,6 @@
         (in-hole expr-ctxt v_1)]
    [--> (in-hole expr-ctxt (cdr (cons v_1 v_2)))
         (in-hole expr-ctxt v_2)]
-   
 
    ;; arithmetic
    [--> (in-hole expr-ctxt (+ number_1 number_2))
@@ -123,8 +132,6 @@
    [--> (in-hole expr-ctxt (>= number_1 number_2))
         (in-hole expr-ctxt ,(>= (term number_1) (term number_2)))]
 
-   
-
    ;; xxx entity-idx
    ;; xxx component-ref
    [--> (in-hole world-ctxt
@@ -138,21 +145,30 @@
                         ,(list-ref (term (v ...)) (term number_e))))]
 
    ;; xxx rule to start looking at system entities after system state pre
+   
    ;; xxx rule to switch from one active entity inside system to next
-   #;[--> (system #:code ent-e #:sys-st v_st
+   [--> (in-hole world-ctxt
+                 (system
+                  #:sys-st v_st
+                  ;#:code ent-e 
                   #:done ((v_done ...) ...)
-                  #:active (entity number_idx (v_before ...)
+                  #:active (entity number_idx (v_current ...)
                                    (let ([x v_x] ...)
                                      #:map (v_after ...)
-                                     #:red v_red))
+                                     #:red v_red
+                                     #:combine combine))
                   #:rest ((v_next ...)
-                          (v_more ...) ...))
-          (system #:code ent-e #:sys-st (combine v_red v_st)
+                          (v_more ...) ...)))
+        (in-hole world-ctxt
+                 (system
+                  #:sys-st (combine v_red v_st)
+                  ;#:code ent-e
                   #:done ((v_after ...) (v_done ...) ...)
-                  #:active (entity (add1 number_idx) (v_next ...)
-                                   ent-e)
-                  #:rest ((v_more ...) ...))
-          ]   
+                  #:active (entity (+ number_idx 1) (v_next ...)
+                                   ;; ent-e
+                                   1)
+                  #:rest ((v_more ...) ...)))]
+   
    ;; xxx rule to do system state post after last entity
    #;[--> (system #:code ent-e #:sys-st v_st
                   #:done ((v_done ...) ...)
@@ -221,4 +237,28 @@
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 0]) #:map () #:red 42)))))
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2)
                                           (let ([key? (system-state)]) #:map () #:red 42))))
-        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 7]) #:map () #:red 42))))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 7]) #:map () #:red 42)))))
+
+  ;; switching from one active entity inside system to next
+  #;(tred '(world (0 1 2)
+                (system
+                 #:sys-st 1
+                 ;#:code ent-e 
+                 #:done ((1) (0))
+                 #:active (entity 2 (2)
+                                  (let ([a 2])
+                                    #:map (2)
+                                    #:red 2
+                                    #:combine (λ (b c) (+ b c))))
+                 #:rest ((3) (4))))
+        '(world (0 1 2)
+                (system
+                 #:sys-st 3
+                 ;#:code ent-e
+                 #:done ((2) (1) (0))
+                 #:active (entity 3 (3) 1)
+                 #:rest ((4)))))
+
+
+  )
+
