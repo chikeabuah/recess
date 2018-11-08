@@ -23,8 +23,8 @@
          (system-state)
          (event-ref number)]
   [ent-e (let ([x ent-r] ...)
-          #:map (e ...)
-          #:red e)]  
+           #:map (e ...)
+           #:red e)]  
 
   ;; XXX how to do deletion?
   ;; XXX how to do new?
@@ -82,9 +82,21 @@
 (define red
   (reduction-relation
    recess
-   ;; XXX define all the other rules for expressions
+   ;; XXX rules for basic expressions
+
+   ;; boolean logic
    [--> (in-hole expr-ctxt (not #t)) (in-hole expr-ctxt #f)]
    [--> (in-hole expr-ctxt (not #f)) (in-hole expr-ctxt #t)]
+
+   ;; arithmetic
+   [--> (in-hole expr-ctxt (+ number_1 number_2))
+        (in-hole expr-ctxt ,(+ (term number_1) (term number_2)))]
+   [--> (in-hole expr-ctxt (- number_1 number_2))
+        (in-hole expr-ctxt ,(- (term number_1) (term number_2)))]
+   [--> (in-hole expr-ctxt (* number_1 number_2))
+        (in-hole expr-ctxt ,(* (term number_1) (term number_2)))]
+   [--> (in-hole expr-ctxt (/ number_1 number_2))
+        (in-hole expr-ctxt ,(/ (term number_1) (term number_2)))]
 
    ;; xxx entity-idx
    ;; xxx component-ref
@@ -101,31 +113,31 @@
    ;; xxx rule to start looking at system entities after system state pre
    ;; xxx rule to switch from one active entity inside system to next
    #;[--> (system #:code ent-e #:sys-st v_st
-                #:done ((v_done ...) ...)
-                #:active (entity number_idx (v_before ...)
-                                 (let ([x v_x] ...)
-                                   #:map (v_after ...)
-                                   #:red v_red))
-                #:rest ((v_next ...)
-                        (v_more ...) ...))
-        (system #:code ent-e #:sys-st (combine v_red v_st)
-                #:done ((v_after ...) (v_done ...) ...)
-                #:active (entity (add1 number_idx) (v_next ...)
-                                 ent-e)
-                #:rest ((v_more ...) ...))
-        ]   
+                  #:done ((v_done ...) ...)
+                  #:active (entity number_idx (v_before ...)
+                                   (let ([x v_x] ...)
+                                     #:map (v_after ...)
+                                     #:red v_red))
+                  #:rest ((v_next ...)
+                          (v_more ...) ...))
+          (system #:code ent-e #:sys-st (combine v_red v_st)
+                  #:done ((v_after ...) (v_done ...) ...)
+                  #:active (entity (add1 number_idx) (v_next ...)
+                                   ent-e)
+                  #:rest ((v_more ...) ...))
+          ]   
    ;; xxx rule to do system state post after last entity
    #;[--> (system #:code ent-e #:sys-st v_st
-                #:done ((v_done ...) ...)
-                #:active (entity number_idx (v_before ...)
-                                 (let ([x v_x] ...)
-                                   #:map (v_after ...)
-                                   #:red v_red))
-                #:rest ())
-        (system #:code ent-e #:sys-st (combine v_red v_st)
-                #:done ((v_after ...) (v_done ...) ...)
-                #:do-post!)
-        ]
+                  #:done ((v_done ...) ...)
+                  #:active (entity number_idx (v_before ...)
+                                   (let ([x v_x] ...)
+                                     #:map (v_after ...)
+                                     #:red v_red))
+                  #:rest ())
+          (system #:code ent-e #:sys-st (combine v_red v_st)
+                  #:done ((v_after ...) (v_done ...) ...)
+                  #:do-post!)
+          ]
    ;; xxx rule to switch to next system
 
    
@@ -143,12 +155,23 @@
 
 (module+ test
   (define-syntax-rule (tred x y) (test--> red x y))
+  ;; basic expression + entity expression tests
+  ;; boolean logic
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((not #t)) #:red 5))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 5)))))
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (not #t)))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red #f)))))
 
-  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? (event-ref 0)]) #:map () #:red 42))))
+  ;; arithmetic
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((- 2 1)) #:red 5))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (1) #:red 5)))))
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (+ 1 1)))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 2)))))
+  
+
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2)
+                                          (let ([key? (event-ref 0)]) #:map () #:red 42))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 0]) #:map () #:red 42)))))
-  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? (system-state)]) #:map () #:red 42))))
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2)
+                                          (let ([key? (system-state)]) #:map () #:red 42))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 7]) #:map () #:red 42))))))
