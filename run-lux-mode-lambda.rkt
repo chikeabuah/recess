@@ -91,6 +91,8 @@
 (add-sprite!/value db 'seaweed seaweed-p)
 (add-sprite!/value db 'score score-p)
 (add-sprite!/file db 'red-alien-1 (build-path (collection-path "recess") "sprites" "red-alien-1.png"))
+(add-sprite!/file db 'rocket (build-path (collection-path "recess") "sprites" "rocket.png"))
+
 (for ([ell ellipse10] [i (range 10)])
   (add-sprite!/value db (format-symbol "ellipse-~a" (string->symbol (number->string i))) ell))
 (for ([txt text10] [i (range 10)])

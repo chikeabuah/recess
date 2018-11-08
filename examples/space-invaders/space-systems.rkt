@@ -40,7 +40,7 @@
   #:in [on-move move-player]
   #:query player (lookup Player)
   #:map pos (get player 'Position)
-  #:out [image/e (draw-entities pos 'ellipse-0)])
+  #:out [image/e (draw-entities pos 'rocket)])
 
 (define-system enemy-horizontal-motion
   #:query en (lookup Enemy Alive)

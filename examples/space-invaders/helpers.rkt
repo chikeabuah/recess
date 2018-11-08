@@ -58,7 +58,7 @@
   (~>! player new-posn 'Position))
 
 (define (move-friendly-bullet pos)
-  (make-posn (posn-x pos) (- (posn-y pos) 10)))
+  (make-posn (posn-x pos) (- (posn-y pos) 20)))
 
 (define (move-unfriendly-bullet pos)
   (make-posn (posn-x pos) (+ (posn-y pos) 5)))
