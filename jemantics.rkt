@@ -113,6 +113,18 @@
    [--> (in-hole expr-ctxt (/ number_1 number_2))
         (in-hole expr-ctxt ,(/ (term number_1) (term number_2)))]
 
+   ;; predicates
+   [--> (in-hole expr-ctxt (< number_1 number_2))
+        (in-hole expr-ctxt ,(< (term number_1) (term number_2)))]
+   [--> (in-hole expr-ctxt (<= number_1 number_2))
+        (in-hole expr-ctxt ,(<= (term number_1) (term number_2)))]
+   [--> (in-hole expr-ctxt (> number_1 number_2))
+        (in-hole expr-ctxt ,(> (term number_1) (term number_2)))]
+   [--> (in-hole expr-ctxt (>= number_1 number_2))
+        (in-hole expr-ctxt ,(>= (term number_1) (term number_2)))]
+
+   
+
    ;; xxx entity-idx
    ;; xxx component-ref
    [--> (in-hole world-ctxt
@@ -196,6 +208,12 @@
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (1) #:red 5)))))
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (+ 1 1)))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 2)))))
+
+  ;; predicates
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((< 2 1)) #:red 5))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 5)))))
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (> 1 1)))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red #f)))))
   
 
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2)
