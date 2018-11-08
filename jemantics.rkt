@@ -88,6 +88,21 @@
    [--> (in-hole expr-ctxt (not #t)) (in-hole expr-ctxt #f)]
    [--> (in-hole expr-ctxt (not #f)) (in-hole expr-ctxt #t)]
 
+   ;; conditionals
+   [--> (in-hole expr-ctxt (if #t e_1 e_2))
+        (in-hole expr-ctxt e_1)]
+   [--> (in-hole expr-ctxt (if #f e_1 e_2))
+        (in-hole expr-ctxt e_2)]
+
+   ;; pairs
+   [--> (in-hole expr-ctxt (cons v_1 v_2))
+        (in-hole expr-ctxt (cons v_1 v_2))]
+   [--> (in-hole expr-ctxt (car (cons v_1 v_2)))
+        (in-hole expr-ctxt v_1)]
+   [--> (in-hole expr-ctxt (cdr (cons v_1 v_2)))
+        (in-hole expr-ctxt v_2)]
+   
+
    ;; arithmetic
    [--> (in-hole expr-ctxt (+ number_1 number_2))
         (in-hole expr-ctxt ,(+ (term number_1) (term number_2)))]
@@ -162,6 +177,20 @@
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (not #t)))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red #f)))))
 
+  ;; conditionals
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((if #t 2 1)) #:red 5))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (2) #:red 5)))))
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (if #f 1 2)))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 2)))))
+
+  ;; pairs
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((cons 1 2)) #:red 5))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((cons 1 2)) #:red 5)))))
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (car (cons 1 2))))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 1)))))
+  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (cdr (cons 1 2))))))
+        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 2)))))
+  
   ;; arithmetic
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((- 2 1)) #:red 5))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (1) #:red 5)))))
