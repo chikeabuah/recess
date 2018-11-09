@@ -64,8 +64,9 @@
    ;; xxx can occur inside sys-e
    (in-hole sys-ctxt (in-hole ent-ctxt ent-r-ctxt))]
   [system-state-ctxt
-   ;; xxx can occur inside sys-e
    (in-hole ent-ctxt ent-r-ctxt)]
+  [component-ref-ctxt
+   (in-hole world-ctxt sys-ctxt)]
 
   ;; entity state
   [ent-st (entity number (v ...) ent-e)]
@@ -133,18 +134,16 @@
    ;; xxx entity-idx
    
    ;; xxx component-ref
-   [--> (in-hole world-ctxt
-                 (in-hole sys-ctxt
-                          (entity v_idx (v_c ...)
-                                  (let ([a (component-ref number_e)])
-                                    #:map (e_1 ...)
-                                    #:red e_2))))
-        (in-hole world-ctxt
-                 (in-hole sys-ctxt
-                          (entity v_idx (v_c ...)
-                                  (let ([a ,(list-ref (term (v_c ...)) (term number_e))])
-                                    #:map (e_1 ...)
-                                    #:red e_2))))]
+   [--> (in-hole component-ref-ctxt
+                 (entity v_idx (v_c ...)
+                         (let ([a (component-ref number_e)])
+                           #:map (e_1 ...)
+                           #:red e_2)))
+        (in-hole component-ref-ctxt
+                 (entity v_idx (v_c ...)
+                         (let ([a ,(list-ref (term (v_c ...)) (term number_e))])
+                           #:map (e_1 ...)
+                           #:red e_2)))]
    
    ;; system state
    [--> (in-hole world-ctxt
