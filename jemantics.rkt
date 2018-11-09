@@ -152,8 +152,8 @@
                   #:sys-st v_st
                   ;#:code ent-e 
                   #:done ((v_done ...) ...)
-                  #:active (entity number_idx (v_current ...)
-                                   (let ([x v_x] ...)
+                  #:active (entity number_idx (v_after ...)
+                                   (let ([x v_after] ...)
                                      #:map (v_after ...)
                                      #:red v_red
                                      #:combine combine))
@@ -165,8 +165,10 @@
                   ;#:code ent-e
                   #:done ((v_after ...) (v_done ...) ...)
                   #:active (entity (+ number_idx 1) (v_next ...)
-                                   ;; ent-e
-                                   1)
+                                   (let ([x v_next] ...)
+                                     #:map (v_next ...)
+                                     #:red v_red
+                                     #:combine combine))
                   #:rest ((v_more ...) ...)))]
    
    ;; xxx rule to do system state post after last entity
@@ -256,7 +258,11 @@
                  #:sys-st 3
                  ;#:code ent-e
                  #:done ((2) (1) (0))
-                 #:active (entity 3 (3) 1)
+                 #:active (entity 3 (3)
+                                  (let ([a 3])
+                                    #:map (3)
+                                    #:red 3
+                                    #:combine (λ (b c) (+ b c))))
                  #:rest ((4)))))
 
 
