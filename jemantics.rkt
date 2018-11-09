@@ -74,8 +74,8 @@
   ;; system state
   [sys-st (system v (ent-st...))
           (system
-           #:sys-st v_st
-           #:code ent-e 
+           #:sys-st v
+           ;#:code ent-e 
            #:done ((v ...) ...)
            #:active ent-st
            #:rest ((v ...)
@@ -105,8 +105,6 @@
         (in-hole expr-ctxt e_2)]
 
    ;; pairs
-   [--> (in-hole expr-ctxt (cons v_1 v_2))
-        (in-hole expr-ctxt (cons v_1 v_2))]
    [--> (in-hole expr-ctxt (car (cons v_1 v_2)))
         (in-hole expr-ctxt v_1)]
    [--> (in-hole expr-ctxt (cdr (cons v_1 v_2)))
@@ -152,8 +150,8 @@
                   #:sys-st v_st
                   ;#:code ent-e 
                   #:done ((v_done ...) ...)
-                  #:active (entity number_idx (v_after ...)
-                                   (let ([x v_after] ...)
+                  #:active (entity number_idx (v_before ...)
+                                   (let ([x v_x] ...)
                                      #:map (v_after ...)
                                      #:red v_red
                                      #:combine combine))
@@ -165,10 +163,7 @@
                   ;#:code ent-e
                   #:done ((v_after ...) (v_done ...) ...)
                   #:active (entity (+ number_idx 1) (v_next ...)
-                                   (let ([x v_next] ...)
-                                     #:map (v_next ...)
-                                     #:red v_red
-                                     #:combine combine))
+                                   ent-e)
                   #:rest ((v_more ...) ...)))]
    
    ;; xxx rule to do system state post after last entity
@@ -214,8 +209,6 @@
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 2)))))
 
   ;; pairs
-  (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((cons 1 2)) #:red 5))))
-        '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map ((cons 1 2)) #:red 5)))))
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (car (cons 1 2))))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red 1)))))
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let () #:map (#f) #:red (cdr (cons 1 2))))))
@@ -248,7 +241,7 @@
                  ;#:code ent-e 
                  #:done ((1) (0))
                  #:active (entity 2 (2)
-                                  (let ([a 2])
+                                  (let ([a (component-ref 0)])
                                     #:map (2)
                                     #:red 2
                                     #:combine (λ (b c) (+ b c))))
@@ -259,7 +252,7 @@
                  ;#:code ent-e
                  #:done ((2) (1) (0))
                  #:active (entity 3 (3)
-                                  (let ([a 3])
+                                  (let ([a (component-ref 0)])
                                     #:map (3)
                                     #:red 3
                                     #:combine (λ (b c) (+ b c))))
