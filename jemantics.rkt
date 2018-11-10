@@ -67,6 +67,8 @@
    (in-hole ent-ctxt ent-r-ctxt)]
   [component-ref-ctxt
    (in-hole world-ctxt sys-ctxt)]
+  [entity-idx-ctxt
+   (in-hole world-ctxt sys-ctxt)]
 
   ;; entity state
   [ent-st (entity number (v ...) ent-e)]
@@ -132,6 +134,16 @@
         (in-hole expr-ctxt ,(>= (term number_1) (term number_2)))]
 
    ;; xxx entity-idx
+   [--> (in-hole entity-idx-ctxt
+                 (entity v_idx (v_c ...)
+                         (let ([a (entity-idx)])
+                           #:map (e_1 ...)
+                           #:red e_2)))
+        (in-hole entity-idx-ctxt
+                 (entity v_idx (v_c ...)
+                         (let ([a v_idx])
+                           #:map (e_1 ...)
+                           #:red e_2)))]
    
    ;; xxx component-ref
    [--> (in-hole component-ref-ctxt
@@ -248,10 +260,15 @@
 
   ;; referencing
 
+  ;; entity-idx
+  #;(tred ' (entity 42 (0 1 2)
+                    (let ([key? (entity-idx)]) #:map (1) #:red 42))
+          ' (entity 42 (0 1 2) (let ([key? 42]) #:map (1) #:red 42)))
+  
   ;; component-ref
-  #;(tred '(world (0 1 2) (system 7 (entity 42 (0 1 2)
-                                            (let ([key? (component-ref 2)]) #:map (1) #:red 42))))
-          '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 2]) #:map (1) #:red 42)))))
+  #;(tred ' (entity 42 (0 1 2)
+                    (let ([key? (component-ref 2)]) #:map (1) #:red 42))
+          ' (entity 42 (0 1 2) (let ([key? 2]) #:map (1) #:red 42)))
 
   ;; event-ref
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2)
