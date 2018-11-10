@@ -93,9 +93,8 @@
   [sys-ctxt (system v hole)]
   
   ;; world state
-  ;; xxx capture all systems and all entities
-  [world-st (world (v ...) sys-st)]
-  [world-ctxt (world (v ...) hole)]
+  [world-st (world (v ...) sys-st) (world (v ...) (ent-st ...) (sys-st ...))]
+  [world-ctxt (world (v ...) hole) (world (v ...) (ent-ctxt ...) (sys-ctxt ...))]
 
   )
 
@@ -177,6 +176,20 @@
                         ,(list-ref (term (v ...)) (term number_e))))]
 
    ;; xxx rule to start looking at system entities after system state pre
+   [--> (system
+         #:sys-st v_st
+         #:code (let ([a sys-r_1] ...)
+                  #:pre [b e_1]
+                  #:ent ent-e_1
+                  #:red [c e_2 (λ (y z) e_3)]
+                  #:pst e_4)
+         #:rest ((v_next ...) (v_after ...) ...)
+         #:do-pre! #t)
+        (system
+         #:sys-st e_1
+         #:active (entity number_idx (v_next ...)
+                          ent-e_1)
+         #:rest ((v_after ...) ...))]
    
    ;; xxx rule to switch from one active entity inside system to next
    [--> (in-hole world-ctxt
