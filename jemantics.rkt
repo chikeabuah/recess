@@ -82,7 +82,14 @@
            #:done ((v ...) ...)
            #:active ent-st
            #:rest ((v ...)
-                   (v ...) ...))]
+                   (v ...) ...))
+          (system
+           #:sys-st v
+           #:do-pre! boolean)
+          (system
+           #:sys-st v
+           #:done ((v ...) ...)
+           #:do-post! boolean)]
   [sys-ctxt (system v hole)]
   
   ;; world state
@@ -207,7 +214,7 @@
          ;#:code sys-e
          #:sys-st (combine v_red v_st)
          #:done ((v_after ...) (v_done ...) ...)
-         #:do-post!)]
+         #:do-post! #t)]
    
    ;; xxx rule to switch to next system
 
