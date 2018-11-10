@@ -176,7 +176,10 @@
        (define dynamic
          (for/list ([io (in-list image-outputs)])
            (match-define (cons sym (posn x y)) io)           
-           (sprite (->fl x) (->fl y) (sprite-idx cdb sym)
+           (sprite
+            (->fl (inexact->exact (round x)))
+            (->fl (inexact->exact (round y)))
+            (sprite-idx cdb sym)
                    #:layer 3)))
        (define draw
          (rendering-states->draw lc '() dynamic))

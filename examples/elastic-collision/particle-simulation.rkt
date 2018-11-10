@@ -19,8 +19,12 @@
 (define-component SpeedY 5)
 (define-component GameID)
 
+(define-system particle-collision
+  #:query particle (lookup Particle Position Mobile)
+  #:map _ (collide! particle (lookup Particle Position Mobile)))
+
 (define-system move-particles
-  ;#:in [on-collide particle-collision]
+  #:in [on-collide particle-collision]
   #:query particle (lookup Particle Position Mobile)
   #:map pos (move-bounded-particle! particle W H))
 
@@ -34,13 +38,15 @@
   #:systems
   render-particles  
   move-particles
-  ;particle-collision
+  particle-collision
   #:initialize
   ;; add particles
   (for ([idx (in-range PARTICLES)])
       (add-entity!
         (list Particle Mobile Size
               SpeedX SpeedY
+              (copy-component 'GameID (gensym))
+              (copy-component 'Mass (add1 (random 5)))
               (copy-component 'Position (make-posn (random W) (random H))))))
   #:stop #f
   #:run run/lux-mode-lambda)
