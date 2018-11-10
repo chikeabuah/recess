@@ -247,7 +247,7 @@
     (define g (world-dependency-graph (current-world)))
     (for ([node (in-vector g)]
           [idx (in-naturals)])
-      (begin (vector-set! g idx (step-func node))))
+      (vector-set! g idx (step-func node)))
     (current-world (struct-copy world (current-world) [dependency-graph g]))))
 
 ;; the idea here is to poll the events by examing the hash values
