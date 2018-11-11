@@ -28,7 +28,7 @@
   (for ([op (in-list ps)])
     (when (and
            (not (eq? (get p 'GameID) (get op 'GameID)))
-           (< 10 (distance (get p 'Position) (get op 'Position))))
+           (> 50 (distance (get p 'Position) (get op 'Position))))
       (begin
         (define m1 (get p 'Mass))
         (define m2 (get op 'Mass))
