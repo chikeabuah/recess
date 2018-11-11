@@ -2,10 +2,10 @@
 
 (require recess/run-lux-mode-lambda "helpers.rkt")
 
-(define PARTICLES 150)
+(define PARTICLES 250)
 (define W 3000)
 (define H 2000)
-(define S 150)
+(define S 50)
 (define-component Particle)
 (define-component Position (make-posn 1000 1000))
 (define-component Shape)
@@ -31,9 +31,9 @@
 
 (define-system render-particles
   #:in [on-move move-particles]
-  #:query particle (lookup Particle Position)
-  #:map pos (get particle 'Position)
-  #:out [image/e (draw-entities pos 'ellipse-0)])
+  #:query particle (lookup Particle Position Color)
+  #:map pc (cons (get particle 'Position) (get particle 'Color))
+  #:out [image/e (draw-entities pc "ellipse")])
 
 (begin-recess
   #:systems
@@ -52,6 +52,7 @@
                      [s (if (eq? r 0) 1 -1)])
                 (copy-component 'SpeedY (* s (add1 (random S)))))
               (copy-component 'GameID (gensym))
+              (copy-component 'Color (random-color))
               (copy-component 'Mass (add1 (random 20)))
               (copy-component 'Position (make-posn (random W) (random H))))))
   #:stop #f

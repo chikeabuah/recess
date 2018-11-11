@@ -28,12 +28,13 @@
   lux/chaos/gui/key
   lang/posn))
 
-(define COLORS (send the-color-database get-names))
+(define COLORS
+  (filter
+   (λ (c) (andmap (λ (ch) (not (char-whitespace? ch))) (string->list c)))
+   (send the-color-database get-names)))
 
 (define (random-color)
   (list-ref COLORS (random (length COLORS))))
-
-(define rc random-color)
 
 ;;;
 ;;; SIZES
@@ -95,6 +96,13 @@
 
 (for ([ell ellipse10] [i (range 10)])
   (add-sprite!/value db (format-symbol "ellipse-~a" (string->symbol (number->string i))) ell))
+
+(for ([c COLORS])
+  (add-sprite!/value
+   db
+   (format-symbol "~a-ellipse" (string->symbol c))
+   (disk 50 #:color c)))
+
 (for ([txt text10] [i (range 10)])
   (add-sprite!/value db (format-symbol "text-~a" (string->symbol (number->string i))) txt))
 (define cdb (compile-sprite-db db))

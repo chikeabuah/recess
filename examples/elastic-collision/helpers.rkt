@@ -6,10 +6,10 @@
 
 ;; helpers
 
-(define (draw-entities posns sprite-sym)
+(define (draw-entities pcs sprite-ref)
   (map
-   (λ (position) (cons sprite-sym position))
-   posns))
+   (λ (pc) (cons (string->symbol (string-append (cdr pc) "-" sprite-ref)) (car pc)))
+   pcs))
 
 (define (distance a b)
   (sqrt
@@ -57,10 +57,12 @@
             (* -1 theta)))
         (~~>! p (make-immutable-hasheq
                   (list
+                   (cons 'Color (random-color))
                    (cons 'SpeedX (car u1))
                    (cons 'SpeedY (cdr u1)))))
         (~~>! op (make-immutable-hasheq
                   (list
+                   (cons 'Color (random-color))
                    (cons 'SpeedX (car u2))
                    (cons 'SpeedY (cdr u2)))))))))      
 
