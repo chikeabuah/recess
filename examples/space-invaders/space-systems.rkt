@@ -34,7 +34,7 @@
 (define-system move-player
   #:in [key key/e]
   #:query player (lookup Player)
-  #:map pos (get player 'Position) (move-player! player (and key (key-event-code key))))
+  #:map pos (move-player! player (and key (key-event-code key))))
 
 (define-system render-player
   #:in [on-move move-player]

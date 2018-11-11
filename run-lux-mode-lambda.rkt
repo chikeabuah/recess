@@ -61,7 +61,7 @@
   (text "SCORE:" (cons (send the-color-database find-color "white") null) 50))
 
 (define (ellipse-maker c)
-  (disk 40 #:color (car c) #:border-color (cdr c) #:border-width 5))
+  (disk 50 #:color (car c) #;#:border-color #;(cdr c) #;#:border-width #;5))
 
 ;; make 10 random looking ellipses
 (define ellipse10
@@ -176,7 +176,10 @@
        (define dynamic
          (for/list ([io (in-list image-outputs)])
            (match-define (cons sym (posn x y)) io)           
-           (sprite (->fl x) (->fl y) (sprite-idx cdb sym)
+           (sprite
+            (->fl (inexact->exact (round x)))
+            (->fl (inexact->exact (round y)))
+            (sprite-idx cdb sym)
                    #:layer 3)))
        (define draw
          (rendering-states->draw lc '() dynamic))
