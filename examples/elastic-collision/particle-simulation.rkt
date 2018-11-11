@@ -5,7 +5,7 @@
 (define PARTICLES 150)
 (define W 3000)
 (define H 2000)
-(define S 15)
+(define S 150)
 (define-component Particle)
 (define-component Position (make-posn 1000 1000))
 (define-component Shape)
