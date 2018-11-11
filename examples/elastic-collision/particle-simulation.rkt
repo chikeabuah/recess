@@ -2,15 +2,16 @@
 
 (require recess/run-lux-mode-lambda "helpers.rkt")
 
-(define PARTICLES 200)
+(define PARTICLES 150)
 (define W 3000)
 (define H 2000)
+(define S 15)
 (define-component Particle)
 (define-component Position (make-posn 1000 1000))
 (define-component Shape)
 (define-component Color)
 (define-component Mobile)
-(define-component Size 5)
+(define-component Size 25)
 (define-component Effect)
 (define-component BoundingX)
 (define-component BoundingY)
@@ -46,10 +47,10 @@
         (list Particle Mobile Size
               (let* ([r (random 2)]
                      [s (if (eq? r 0) 1 -1)])
-                (copy-component 'SpeedX (* s (add1 (random 15)))))
+                (copy-component 'SpeedX (* s (add1 (random S)))))
               (let* ([r (random 2)]
                      [s (if (eq? r 0) 1 -1)])
-                (copy-component 'SpeedY (* s (add1 (random 15)))))
+                (copy-component 'SpeedY (* s (add1 (random S)))))
               (copy-component 'GameID (gensym))
               (copy-component 'Mass (add1 (random 20)))
               (copy-component 'Position (make-posn (random W) (random H))))))
