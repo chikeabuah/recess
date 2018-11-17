@@ -100,7 +100,7 @@
 (define-system render-score
   #:query s (lookup Score)
   #:map s s
-  #:out [image/e (draw-number (car s))])
+  #:out [image/e (draw-number (vector-ref s 0))])
 
 (begin-recess
   #:systems

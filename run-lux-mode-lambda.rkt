@@ -182,7 +182,7 @@
        (match-define (lux-recess-world rendering-states->draw pe crw image-outputs) w)
        (dte "starting rendering")
        (define dynamic
-         (for/list ([io (in-list image-outputs)])
+         (for/list ([io image-outputs])
            (match-define (cons sym (posn x y)) io)           
            (sprite
             (->fl (inexact->exact (round x)))

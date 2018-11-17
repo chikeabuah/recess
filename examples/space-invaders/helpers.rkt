@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require recess/run-lux-mode-lambda)
+(require recess/run-lux-mode-lambda racket/vector)
 
 (provide (all-defined-out))
 
@@ -28,7 +28,7 @@
    (map (λ (n) (* n 120)) (cdr (range 6)))))
 
 (define (draw-entities posns sprite-sym)
-  (map
+  (vector-map
    (λ (position) (cons sprite-sym position))
    posns))
 
@@ -37,11 +37,12 @@
   (define str (number->string num))
   (define lst (filter (λ (c) (not (equal? c ""))) (string-split str "")))
   (define offsets (map (λ (i) (make-posn (+ (* 30 i) 220) 40)) (range (length lst))))
-  (define res (map
-   (λ (ch pos) (cons (format-symbol "text-~a" (string->symbol ch)) pos))
-   lst offsets))
+  (define res
+    (map
+     (λ (ch pos) (cons (format-symbol "text-~a" (string->symbol ch)) pos))
+     lst offsets))
   (define r (append (list (cons 'score (make-posn 100 40))) res))
-  r)
+  (list->vector r))
 
 (define (move-player! player key)
   (define k

@@ -10,11 +10,9 @@
   racket/syntax
   racket/match
   racket/generic
-  racket/hash
   racket/contract
   racket/string
   racket/list
-  racket/set
   racket/vector)
 
 (define PROFILING? #f)
@@ -491,7 +489,8 @@
               (define entities (if enabled (~? query (list)) (list)))
               (define (map-body-fun state-name pre-name entities-name evts)
                 (match-define (list evt-name ...) evts)
-                (~? (map (λ (entities-name) map-body ...) entities) (void)))
+                (~? (vector-map! (λ (entities-name) map-body ...) entities) (void))
+                entities)
               (define (reduce-body-fun state-name pre-name map-name)
                 (~? (begin (foldl reduce-body zero-expr entities) ...) (void)))
               (define maps-val
@@ -545,7 +544,7 @@
          flag))
      #f))
   ;; allocation
-  (define matches (vector->list (vector-filter archetype-match? entities)))
+  (define matches (vector-filter archetype-match? entities))
   matches)
 
 (define (lookup-by-indices idxs)

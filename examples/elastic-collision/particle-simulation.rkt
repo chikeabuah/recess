@@ -1,8 +1,8 @@
 #lang racket/base
 
-(require recess/run-lux-mode-lambda racket/set)
+(require recess/run-lux-mode-lambda racket/set racket/vector)
 
-(define PARTICLES 500)
+(define PARTICLES 600)
 
 (define GRIDN 10)
 
@@ -14,9 +14,10 @@
     (hash-set! GRID (cons v-idx h-idx) (mutable-seteq))))
 
 (define (draw-entities pcs sprite-ref)
-  (map
+  (vector-map!
    (λ (pc) (cons (string->symbol (string-append (cdr pc) "-" sprite-ref)) (car pc)))
-   pcs))
+   pcs)
+  pcs)
 
 (define (distance a b)
   (sqrt
@@ -102,8 +103,10 @@
     (set! vy (* vy -1)))
   (define new-x (inexact->exact (truncate (+ px vx))))
   (define new-y (inexact->exact (truncate (+ py vy))))
-  (when (>= new-y H) (set! new-y H))
-  (when (>= new-x W) (set! new-x W))
+  (when (> new-y H) (set! new-y H))
+  (when (> new-x W) (set! new-x W))
+  (when (< new-y 0) (set! new-y 0))
+  (when (< new-x 0) (set! new-x 0))
   (define new-posn (make-posn new-x new-y))
   ;; unset old grid pos
   (set-remove! (hash-ref G (cons (getidx py) (getidx px))) idx)
@@ -128,7 +131,7 @@
 (define-component Shape)
 (define-component Color)
 (define-component Mobile)
-(define-component Size 25)
+(define-component Size 50)
 (define-component Effect)
 (define-component BoundingX)
 (define-component BoundingY)
