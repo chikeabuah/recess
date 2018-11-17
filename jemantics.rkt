@@ -82,6 +82,8 @@
            #:ents-to-delete-count number
            #:ents-to-produce-vals ((v ...) ...)
            #:ents-to-delete-indices (number ...)
+           #:delete-active? boolean
+           #:create-entity? boolean
            #:code sys-e 
            #:done ((v ...) ...)
            #:active ent-st
