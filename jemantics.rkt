@@ -224,6 +224,60 @@
                   #:active (entity (+ number_idx 1) (v_next ...)
                                    ent-e)
                   #:rest ((v_more ...) ...)))]
+
+   ;; xxx rule to switch from one active entity inside system to next
+   ;; and create a new entity in the process
+   [--> (in-hole world-ctxt
+                 (system
+                  #:sys-st v_st
+                  #:ents-to-produce-count v_n1
+                  #:ents-to-produce-vals ((v_to_prod ...) ...)
+                  #:create-entity? #t
+                  #:done ((v_done ...) ...)
+                  #:active (entity number_idx (v_before ...)
+                                   (let ([x v_x] ...)
+                                     #:map (v_after ...)
+                                     #:red v_red
+                                     #:combine combine))
+                  #:rest ((v_next ...)
+                          (v_more ...) ...)))
+        (in-hole world-ctxt
+                 (system
+                  #:sys-st (combine v_red v_st)
+                  #:ents-to-produce-count (+ 1 v_n1)
+                  #:ents-to-produce-vals ((v_after ...) (v_to_prod ...) ...)
+                  #:create-entity? #f
+                  #:done ((v_after ...) (v_done ...) ...)
+                  #:active (entity (+ number_idx 1) (v_next ...)
+                                   ent-e)
+                  #:rest ((v_more ...) ...)))]
+
+   ;; xxx rule to switch from one active entity inside system to next
+   ;; and delete the active entity in the process
+   [--> (in-hole world-ctxt
+                 (system
+                  #:sys-st v_st
+                  #:ents-to-delete-count v_n1
+                  #:ents-to-delete-indices (v_n2 ...)
+                  #:delete-active? #t
+                  #:done ((v_done ...) ...)
+                  #:active (entity number_idx (v_before ...)
+                                   (let ([x v_x] ...)
+                                     #:map (v_after ...)
+                                     #:red v_red
+                                     #:combine combine))
+                  #:rest ((v_next ...)
+                          (v_more ...) ...)))
+        (in-hole world-ctxt
+                 (systems
+                  #:sys-st (combine v_red v_st)
+                  #:ents-to-delete-count (+ 1 v_n1)
+                  #:ents-to-delete-indices (number_idx v_n2 ...)
+                  #:delete-active? #f
+                  #:done ((v_after ...) (v_done ...) ...)
+                  #:active (entity (+ number_idx 1) (v_next ...)
+                                   ent-e)
+                  #:rest ((v_more ...) ...)))]
    
    ;; xxx rule to do system state post after last entity
    [--> (system
