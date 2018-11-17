@@ -35,7 +35,7 @@
   racket/string))
 
 (define CMAX 100)
-(define EMAX 500)
+(define EMAX 5000)
 
 ;; A component is an identifier
 ;; and optionally some other data
@@ -544,8 +544,13 @@
            (check? r))
          flag))
      #f))
+  ;; allocation
   (define matches (vector->list (vector-filter archetype-match? entities)))
   matches)
+
+(define (lookup-by-indices idxs)
+  (define entities (world-entities (current-world)))
+  (map (λ (idx) (vector-ref entities idx)) idxs))
 
 (define (true? x)
   x)
