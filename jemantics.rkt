@@ -97,8 +97,14 @@
   [sys-ctxt (system v hole)]
   
   ;; world state
-  [world-st (world (v ...) sys-st) (world (v ...) (ent-st ...) (sys-st ...))]
-  [world-ctxt (world (v ...) hole) (world (v ...) (ent-ctxt ...) (sys-ctxt ...))]
+  [world-st (world (v ...) sys-st)
+            (world (v ...) (ent-st ...) (sys-st ...))
+            (world (v ...) (ent-st ...)
+                   #:done (sys-st ...)
+                   #:active sys-st
+                   #:rest (sys-st ...))]
+  [world-ctxt (world (v ...) hole)
+              (world (v ...) (ent-ctxt ...) (sys-ctxt ...))]
 
   )
 
@@ -234,8 +240,15 @@
          #:do-post! #t)]
    
    ;; xxx rule to switch to next system
+   [--> (world (v_1 ...) (ent-st_1 ...)
+                   #:done (sys-st_done ...)
+                   #:active sys-st_after
+                   #:rest (sys-st_next sys-st_more ...))
 
-   
+   (world (v_1 ...) (ent-st_1 ...)
+                   #:done (sys-st_after sys-st_done ...)
+                   #:active sys-st_next
+                   #:rest (sys-st_more ...))]
    
    ))
 
@@ -314,7 +327,7 @@
                                     (let ([a (component-ref 0)])
                                       #:map (2)
                                       #:red 2
-                                      #:combine (λ (b c) (+ b c))))
+                                      #;#:combine (λ (b c) (+ b c))))
                    #:rest ((3) (4))))
           '(world (0 1 2)
                   (system
@@ -325,9 +338,10 @@
                                     (let ([a (component-ref 0)])
                                       #:map (3)
                                       #:red 3
-                                      #:combine (λ (b c) (+ b c))))
+                                      #;#:combine (λ (b c) (+ b c))))
                    #:rest ((4)))))
 
+  ;; switch to next system
 
   )
 
