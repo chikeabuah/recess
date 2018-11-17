@@ -78,6 +78,10 @@
   [sys-st (system v (ent-st...))
           (system
            #:sys-st v
+           #:ents-to-produce-count number
+           #:ents-to-delete-count number
+           #:ents-to-produce-vals ((v ...) ...)
+           #:ents-to-delete-indices (number ...)
            #:code sys-e 
            #:done ((v ...) ...)
            #:active ent-st
