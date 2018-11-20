@@ -113,7 +113,13 @@
     (if polarity   
         (set! pos (make-posn (+ (posn-x pos) 1) (posn-y pos)))
         (set! pos (make-posn (- (posn-x pos) 1) (posn-y pos))))
-    (~~>! en (make-immutable-hasheq
+    (begin
+      (~>! en current-max-offset 'MaxOffset)
+      (~>! en polarity 'Polarity)
+      (~>! en fw 'FirstWall)
+      (~>! en pos 'Position)
+      (~>! en current-offset 'CurrentOffset))
+    #;(~~>! en (make-immutable-hasheq
               (list
                (cons 'MaxOffset current-max-offset)
                (cons 'Polarity polarity)

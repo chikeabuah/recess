@@ -70,12 +70,19 @@
             (+ (* (car fv2) (/ (- m2 m1) (+ m1 m2))) ( * 2 (car fv1) (/ m1 (+ m1 m2))))
             (cdr fv2))
            (* -1 theta)))
-        (~~>! p (make-immutable-hasheq
+        (begin
+          (~>! p (random-color) 'Color)
+          (~>! p (car u1) 'SpeedX)
+          (~>! p (cdr u1) 'SpeedY)
+          (~>! op (random-color) 'Color)
+          (~>! op (car u2) 'SpeedX)
+          (~>! op (cdr u2) 'SpeedY))
+        #;(~~>! p (make-immutable-hasheq
                  (list
                   (cons 'Color (random-color))
                   (cons 'SpeedX (car u1))
                   (cons 'SpeedY (cdr u1)))))
-        (~~>! op (make-immutable-hasheq
+        #;(~~>! op (make-immutable-hasheq
                   (list
                    (cons 'Color (random-color))
                    (cons 'SpeedX (car u2))
