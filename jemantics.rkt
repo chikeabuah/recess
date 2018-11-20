@@ -27,9 +27,6 @@
            #:red e
            #;#:combine (λ (y z) e))]  
 
-  ;; XXX how to do deletion?
-  ;; XXX how to do new?
-
   ;; Systems
   [sys-r (system-state)
          (event-ref number)]
@@ -297,14 +294,64 @@
    
    ;; xxx rule to switch to next system
    [--> (world (v_1 ...) (ent-st_1 ...)
-                   #:done (sys-st_done ...)
-                   #:active sys-st_after
-                   #:rest (sys-st_next sys-st_more ...))
+               #:done (sys-st_done ...)
+               #:active sys-st_after
+               #:rest (sys-st_next sys-st_more ...))
 
-   (world (v_1 ...) (ent-st_1 ...)
-                   #:done (sys-st_after sys-st_done ...)
-                   #:active sys-st_next
-                   #:rest (sys-st_more ...))]
+        (world (v_1 ...) (ent-st_1 ...)
+               #:done (sys-st_after sys-st_done ...)
+               #:active sys-st_next
+               #:rest (sys-st_more ...))]
+
+   ;; xxx rule to switch to next system and manage entitites
+
+   ;; entity addition
+   [--> (world (v_1 ...) (ent-st_1 ...)
+               #:done (sys-st_done ...)
+               #:active (system
+                         #:sys-st v_st
+                         #:ents-to-produce-count v_n1
+                         #:ents-to-produce-vals ((v_to_prod ...) (v_to_prod_next ...)...)
+                         #:done ((v_done ...) ...)
+                         #:active empty
+                         #:rest empty)
+               #:rest (sys-st_next sys-st_more ...))
+
+        (world (v_1 ...) ((entity (v_to_prod ...)) ent-st_1 ...)
+               #:done (sys-st_done ...)
+               #:active (system
+                         #:sys-st v_st
+                         #:ents-to-produce-count (- v_n1 1)
+                         #:ents-to-produce-vals ((v_to_prod_next ...)...)
+                         #:done ((v_done ...) ...)
+                         #:active empty
+                         #:rest empty)
+               #:rest (sys-st_next sys-st_more ...))]
+
+   ;; entity deletion
+   [--> (world (v_1 ...) (ent-st_1 ...)
+               #:done (sys-st_done ...)
+               #:active (system
+                         #:sys-st v_st
+                         #:ents-to-delete-count v_n1
+                         #:ents-to-delete-indices (v_to_del v_to_del_next ...)
+                         #:done ((v_done ...) ...)
+                         #:active empty
+                         #:rest empty)
+               #:rest (sys-st_next sys-st_more ...))
+
+        (world (v_1 ...) ,(remove
+                           (list-ref (term (ent-st_1 ...)) (term v_to_del))
+                           (term (ent-st_1 ...)))
+               #:done (sys-st_done ...)
+               #:active (system
+                         #:sys-st v_st
+                         #:ents-to-delete-count (- v_n1 1)
+                         #:ents-to-delete-indices (v_to_del_next ...)
+                         #:done ((v_done ...) ...)
+                         #:active empty
+                         #:rest empty)
+               #:rest (sys-st_next sys-st_more ...))]
    
    ))
 
