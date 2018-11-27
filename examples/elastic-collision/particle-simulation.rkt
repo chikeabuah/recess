@@ -31,10 +31,14 @@
 
 (define (make-qt)
   ;;
-  (define qt (quadtree 0 (bound (make-posn 0 0) W H) (list) (vector #f #f #f #f)))
+  (define qt (quadtree 0 (bound (make-posn 0 0) W H -1) (list) (vector #f #f #f #f)))
   (define pts (lookup Particle Position Mobile))
   (for ([p (in-list pts)])
-    (insert! qt p))
+    (begin
+      (define px (posn-x (get p 'Position)))
+      (define py (posn-y (get p 'Position)))
+      (define idx (get p 'GameID))
+      (insert! qt (bound (make-posn px py) S S idx))))
   qt)
 
 (define (collide! p qt)
@@ -45,7 +49,7 @@
 
   
   #;(define ps (lookup-by-indices (set->list (hash-ref GRID (cons (getidx py) (getidx px))))))
-  (define ps (lookup-by-indices (retrieve p)))
+  (define ps (lookup-by-indices (retrieve qt (bound (make-posn px py) S S idx))))
   (for ([op (in-list ps)])
     (when (and
            (not (eq? (get p 'GameID) (get op 'GameID)))
@@ -88,15 +92,15 @@
           (~>! op (car u2) 'SpeedX)
           (~>! op (cdr u2) 'SpeedY))
         #;(~~>! p (make-immutable-hasheq
-                 (list
-                  (cons 'Color (random-color))
-                  (cons 'SpeedX (car u1))
-                  (cons 'SpeedY (cdr u1)))))
+                   (list
+                    (cons 'Color (random-color))
+                    (cons 'SpeedX (car u1))
+                    (cons 'SpeedY (cdr u1)))))
         #;(~~>! op (make-immutable-hasheq
-                  (list
-                   (cons 'Color (random-color))
-                   (cons 'SpeedX (car u2))
-                   (cons 'SpeedY (cdr u2)))))))))      
+                    (list
+                     (cons 'Color (random-color))
+                     (cons 'SpeedX (car u2))
+                     (cons 'SpeedY (cdr u2)))))))))      
 
 (define (move-bounded-particle! particle W H G)
   (define px (posn-x (get particle 'Position)))

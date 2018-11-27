@@ -9,8 +9,7 @@
 (define MAXOBJECTS 10)
 (define MAXLEVELS 4)
 
-(struct bound (psn w h))
-(struct bo (bnd data))
+(struct bound (psn w h data))
 (struct quadtree (level bounds objects nodes) #:mutable)
 
 (define (split! qt)
@@ -23,25 +22,25 @@
 
   (define top-left
     (quadtree nextlevel
-              (bound (make-posn x y) subwidth subheight)
+              (bound (make-posn x y) subwidth subheight -1)
               (list)
               (vector #f #f #f #f)))
 
   (define top-right
     (quadtree nextlevel
-              (bound (make-posn (+ x subwidth) y) subwidth subheight)
+              (bound (make-posn (+ x subwidth) y) subwidth subheight -1)
               (list)
               (vector #f #f #f #f)))
 
   (define bottom-left
     (quadtree nextlevel
-              (bound (make-posn x (+ y subheight)) subwidth subheight)
+              (bound (make-posn x (+ y subheight)) subwidth subheight -1)
               (list)
               (vector #f #f #f #f)))
 
   (define bottom-right
     (quadtree nextlevel
-              (bound (make-posn (+ x subwidth) (+ y subheight)) subwidth subheight)
+              (bound (make-posn (+ x subwidth) (+ y subheight)) subwidth subheight -1)
               (list)
               (vector #f #f #f #f)))
 
@@ -83,13 +82,13 @@
   (define nodes (quadtree-nodes qt))
   (define done? #f)
   (when (not (eq? (vector-ref nodes 0) #f))
-    (define idx (get-index b))
+    (define idx (get-index qt b))
     (when (not (eq? idx -1))
       (vector-set! nodes idx b)
       (set! done? #t)))
   (when (not done?)
     (begin
-      (set-quadtree-objects! qt (append b (quadtree-objects qt)))
+      (set-quadtree-objects! qt (append (list b) (quadtree-objects qt)))
       (when (and
              (> (length (quadtree-objects qt)) MAXOBJECTS)
              (< (quadtree-level qt) MAXLEVELS))
@@ -99,12 +98,12 @@
           (define rem (list))
           (for ([i (in-range (length (quadtree-objects qt)))])
                 (begin
-                  (define index (get-index (list-ref i (quadtree-objects qt))))
+                  (define index (get-index qt (list-ref (quadtree-objects qt) i)))
                   (if (not (eq? index -1))
                       (insert!
-                       (vector-ref index (quadtree-nodes qt))
-                       (list-ref i (quadtree-objects qt)))
-                      (set! rem (append (list-ref i (quadtree-objects qt)) rem)))))
+                       (vector-ref (quadtree-nodes qt) index)
+                       (list-ref (quadtree-objects qt) i))
+                      (set! rem (append (list-ref (quadtree-objects qt) i) rem)))))
           (set-quadtree-objects! qt rem))))))
 
 (define (retrieve qt b)
@@ -113,9 +112,9 @@
   (define robjs (quadtree-objects qt))
   (when (eq? (vector-ref nodes 0) #f)
     (if (not (eq? index -1))
-        (set! robjs (append robjs (retrieve (vector-ref index nodes) b)))
+        (set! robjs (append robjs (retrieve (vector-ref nodes index) b)))
         (for ([i (in-range (length nodes))])
-          (set! robjs (append robjs (retrieve (vector-ref i nodes) b))))))
+          (set! robjs (append robjs (retrieve (vector-ref nodes i) b))))))
   robjs)
 
         
