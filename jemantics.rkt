@@ -101,7 +101,11 @@
             (world (v ...) (ent-st ...)
                    #:done (sys-st ...)
                    #:active sys-st
-                   #:rest (sys-st ...))]
+                   #:rest (sys-st ...))
+            (world #:done-ev (v ...)
+                   #:active-ev v
+                   #:rest-ev (v ...)
+                   (ent-st ...) (sys-st ...))]
   [world-ctxt (world (v ...) hole)
               (world (v ...) (ent-ctxt ...) (sys-ctxt ...))]
 
@@ -303,7 +307,24 @@
                #:active sys-st_next
                #:rest (sys-st_more ...))]
 
-   ;; xxx rule to switch to next system and manage entitites
+   ;; xxx rule to switch to next event
+   [--> (world #:done-ev (v_done ...)
+               #:active-ev v_after
+               #:rest-ev (v_next v_more ...)
+               (ent-st_1 ...)
+               #:done (sys-st_done ...)
+               #:active sys-st_last
+               #:rest ())
+
+        (world #:done-ev (v_after v_done ...)
+               #:active-ev v_next
+               #:rest-ev (v_more ...)
+               (ent-st_1 ...)
+               #:done ()
+               #:active empty
+               #:rest (sys-st_last sys-st_done ...))]
+
+   ;; xxx rules to switch to next system and manage entitites
 
    ;; entity addition
    [--> (world (v_1 ...) (ent-st_1 ...)
