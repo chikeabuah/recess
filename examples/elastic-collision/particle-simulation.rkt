@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require recess/run-lux-mode-lambda racket/set)
+(require recess/run-lux-mode-lambda racket/set "qt.rkt")
 
 (define PARTICLES 500)
 
@@ -29,13 +29,23 @@
    (- (* (car fv) (cos theta)) (* (cdr fv) (sin theta)))
    (+ (* (car fv) (sin theta)) (* (cdr fv) (cos theta)))))
 
-(define (collide! p)
+(define (make-qt)
+  ;;
+  (define qt (quadtree 0 (bound (make-posn 0 0) W H) (list) (vector #f #f #f #f)))
+  (define pts (lookup Particle Position Mobile))
+  (for ([p (in-list pts)])
+    (insert! qt p))
+  qt)
+
+(define (collide! p qt)
   ; p is a particle entity vector
   (define px (posn-x (get p 'Position)))
   (define py (posn-y (get p 'Position)))
   (define idx (get p 'GameID))
+
   
-  (define ps (lookup-by-indices (set->list (hash-ref GRID (cons (getidx py) (getidx px))))))
+  #;(define ps (lookup-by-indices (set->list (hash-ref GRID (cons (getidx py) (getidx px))))))
+  (define ps (lookup-by-indices (retrieve p)))
   (for ([op (in-list ps)])
     (when (and
            (not (eq? (get p 'GameID) (get op 'GameID)))
@@ -164,8 +174,9 @@
   (if border? (- p 1) p))
 
 (define-system particle-collision
+  #:pre qt (make-qt)
   #:query particle (lookup Particle Position Mobile)
-  #:map _ (collide! particle))
+  #:map _ (collide! particle qt))
 
 (define-system move-particles
   #:in [on-collide particle-collision]
