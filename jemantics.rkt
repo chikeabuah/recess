@@ -14,7 +14,7 @@
      (if e e e)]
   [unop not car cdr]
   [binop + - * / < <= >= > cons]
-  [(x y z)
+  [(x y z a b c)
    variable-not-otherwise-mentioned]
 
   ;; Entities
@@ -25,7 +25,7 @@
   [ent-e (let ([x ent-r] ...)
            #:map (e ...)
            #:red e
-           #;#:combine (λ (y z) e))]  
+           #:combine (λ (y z) e))]  
 
   ;; Systems
   [sys-r (system-state)
@@ -66,6 +66,7 @@
    (in-hole world-ctxt sys-ctxt)]
   [entity-idx-ctxt
    (in-hole world-ctxt sys-ctxt)]
+  [entity-ref-ctxt ent-r-ctxt]
 
   ;; entity state
   [ent-st (entity number (v ...) ent-e)]
@@ -155,14 +156,10 @@
    ;; xxx entity-idx
    [--> (in-hole entity-idx-ctxt
                  (entity v_idx (v_c ...)
-                         (let ([a (entity-idx)])
-                           #:map (e_1 ...)
-                           #:red e_2)))
+                         (in-hole entity-ref-ctxt (entity-idx))))
         (in-hole entity-idx-ctxt
                  (entity v_idx (v_c ...)
-                         (let ([a v_idx])
-                           #:map (e_1 ...)
-                           #:red e_2)))]
+                         (in-hole entity-ref-ctxt v_idx)))]
    
    ;; xxx component-ref
    [--> (in-hole component-ref-ctxt
@@ -208,19 +205,23 @@
    [--> (in-hole world-ctxt
                  (system
                   #:sys-st v_st
-                  ;#:code sys-e 
+                  ;#:code sys-e
+                  #:ent-e ent-e
                   #:done ((v_done ...) ...)
                   #:active (entity number_idx (v_before ...)
                                    (let ([x v_x] ...)
                                      #:map (v_after ...)
                                      #:red v_red
-                                     #:combine combine))
+                                     #:combine (λ (b c)
+                                                 e_combine)))
                   #:rest ((v_next ...)
                           (v_more ...) ...)))
         (in-hole world-ctxt
                  (system
-                  #:sys-st (combine v_red v_st)
+                  #:sys-st (let ([b v_red] [c v_st])
+                             e_combine)
                   ;#:code sys-e
+                  #:ent-e ent-e
                   #:done ((v_after ...) (v_done ...) ...)
                   #:active (entity (+ number_idx 1) (v_next ...)
                                    ent-e)
@@ -422,9 +423,9 @@
   ;; referencing
 
   ;; entity-idx
-  #;(tred ' (entity 42 (0 1 2)
-                    (let ([key? (entity-idx)]) #:map (1) #:red 42))
-          ' (entity 42 (0 1 2) (let ([key? 42]) #:map (1) #:red 42)))
+  (tred '(world () (system 42 (entity 42 (0 1 2)
+                                   (let ([key? (entity-idx)]) #:map (1) #:red 42))))
+        '(world () (system 42 (entity 42 (0 1 2) (let ([key? 42]) #:map (1) #:red 42)))))
   
   ;; component-ref
   #;(tred ' (entity 42 (0 1 2)
@@ -442,28 +443,34 @@
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 7]) #:map () #:red 42)))))
 
   ;; switching from one active entity inside system to next
-  #;(tred '(world (0 1 2)
-                  (system
-                   #:sys-st 1
-                   ;#:code ent-e 
-                   #:done ((1) (0))
-                   #:active (entity 2 (2)
-                                    (let ([a (component-ref 0)])
-                                      #:map (2)
-                                      #:red 2
-                                      #;#:combine (λ (b c) (+ b c))))
-                   #:rest ((3) (4))))
-          '(world (0 1 2)
-                  (system
-                   #:sys-st 3
-                   ;#:code ent-e
-                   #:done ((2) (1) (0))
-                   #:active (entity 3 (3)
-                                    (let ([a (component-ref 0)])
-                                      #:map (3)
-                                      #:red 3
-                                      #;#:combine (λ (b c) (+ b c))))
-                   #:rest ((4)))))
+  (tred '(world (0 1 2)
+                (system
+                 #:sys-st 1
+                 #:ent-e (let ([a (component-ref 0)])
+                           #:map (a)
+                           #:red a
+                           #:combine (λ (b c) (+ b c)))
+                 #:done ((1) (0))
+                 #:active (entity 2 (2)
+                                  (let ([a 2])
+                                    #:map (2)
+                                    #:red 2
+                                    #:combine (λ (b c) (+ b c))))
+                 #:rest ((3) (4))))
+        '(world (0 1 2)
+                (system
+                 #:sys-st (let ([b 2] [c 1]) (+ b c))
+                 #:ent-e (let ([a (component-ref 0)])
+                           #:map (a)
+                           #:red a
+                           #:combine (λ (b c) (+ b c)))
+                 #:done ((2) (1) (0))
+                 #:active (entity (+ 2 1) (3)
+                                  (let ([a (component-ref 0)])
+                                    #:map (a)
+                                    #:red a
+                                    #:combine (λ (b c) (+ b c))))
+                 #:rest ((4)))))
 
   ;; switch to next system
 
