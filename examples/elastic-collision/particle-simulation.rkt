@@ -2,7 +2,7 @@
 
 (require recess/run-lux-mode-lambda racket/set "qt.rkt")
 
-(define PARTICLES 500)
+(define PARTICLES 1000)
 
 (define GRIDN 10)
 

@@ -7,7 +7,7 @@
  (all-defined-out))
 
 (define MAXOBJECTS 10)
-(define MAXLEVELS 4)
+(define MAXLEVELS 10)
 
 (struct bound (psn w h data))
 (struct quadtree (level bounds objects nodes) #:mutable)
