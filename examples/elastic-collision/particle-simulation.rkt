@@ -49,7 +49,7 @@
 
   
   #;(define ps (lookup-by-indices (set->list (hash-ref GRID (cons (getidx py) (getidx px))))))
-  (define ps (lookup-by-indices (retrieve qt (bound (make-posn px py) S S idx))))
+  (define ps (lookup-by-indices (map bound-data (retrieve qt (bound (make-posn px py) S S idx)))))
   (for ([op (in-list ps)])
     (when (and
            (not (eq? (get p 'GameID) (get op 'GameID)))

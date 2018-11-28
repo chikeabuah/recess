@@ -103,7 +103,7 @@
                       (insert!
                        (vector-ref (quadtree-nodes qt) index)
                        (list-ref (quadtree-objects qt) i))
-                      (set! rem (append (list-ref (quadtree-objects qt) i) rem)))))
+                      (set! rem (append (list (list-ref (quadtree-objects qt) i)) rem)))))
           (set-quadtree-objects! qt rem))))))
 
 (define (retrieve qt b)
