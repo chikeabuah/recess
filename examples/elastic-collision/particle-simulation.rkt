@@ -127,9 +127,9 @@
   (when (>= new-x W) (set! new-x W))
   (define new-posn (make-posn new-x new-y))
   ;; unset old grid pos
-  (set-remove! (hash-ref G (cons (getidx py) (getidx px))) idx)
+  #;(set-remove! (hash-ref G (cons (getidx py) (getidx px))) idx)
   ;; set new grid pos
-  (set-add!
+  #;(set-add!
    (hash-ref G (cons
                 (getidx new-y)
                 (getidx new-x)))
