@@ -69,11 +69,13 @@
   [entity-ref-ctxt ent-r-ctxt]
 
   ;; entity state
-  [ent-st (entity number (v ...) ent-e)]
+  [ent-st (entity number (v ...) ent-e)
+          (entity (v ...))]
   [ent-ctxt (entity number (v ...) hole)]
 
   ;; system state
-  [sys-st (system v (ent-st...))
+  [sys-st (system number)
+          (system v (ent-st...))
           (system
            #:sys-st v
            #:ents-to-produce-count number
@@ -99,14 +101,14 @@
   ;; world state
   [world-st (world (v ...) sys-st)
             (world (v ...) (ent-st ...) (sys-st ...))
-            (world (v ...) (ent-st ...)
+            (world (v ...)
                    #:done (sys-st ...)
                    #:active sys-st
                    #:rest (sys-st ...))
             (world #:done-ev (v ...)
                    #:active-ev v
                    #:rest-ev (v ...)
-                   (ent-st ...) (sys-st ...))]
+                   (sys-st ...))]
   [world-ctxt (world (v ...) hole)
               (world (v ...) (ent-ctxt ...) (sys-ctxt ...))]
 
@@ -190,22 +192,19 @@
          #:sys-st v_st
          #:code (let ([a sys-r_1] ...)
                   #:pre [b e_1]
-                  #:ent ent-e_1
                   #:red [c e_2 (λ (y z) e_3)]
                   #:pst e_4)
          #:rest ((v_next ...) (v_after ...) ...)
          #:do-pre! #t)
         (system
          #:sys-st e_1
-         #:active (entity number_idx (v_next ...)
-                          ent-e_1)
+         #:active (entity (v_next ...))
          #:rest ((v_after ...) ...))]
    
    ;; xxx rule to switch from one active entity inside system to next
    [--> (in-hole world-ctxt
                  (system
                   #:sys-st v_st
-                  ;#:code sys-e
                   #:ent-e ent-e
                   #:done ((v_done ...) ...)
                   #:active (entity number_idx (v_before ...)
@@ -220,90 +219,19 @@
                  (system
                   #:sys-st (let ([b v_red] [c v_st])
                              e_combine)
-                  ;#:code sys-e
                   #:ent-e ent-e
                   #:done ((v_after ...) (v_done ...) ...)
                   #:active (entity (+ number_idx 1) (v_next ...)
                                    ent-e)
                   #:rest ((v_more ...) ...)))]
 
-   ;; xxx rule to switch from one active entity inside system to next
-   ;; and create a new entity in the process
-   [--> (in-hole world-ctxt
-                 (system
-                  #:sys-st v_st
-                  #:ents-to-produce-count v_n1
-                  #:ents-to-produce-vals ((v_to_prod ...) ...)
-                  #:create-entity? #t
-                  #:done ((v_done ...) ...)
-                  #:active (entity number_idx (v_before ...)
-                                   (let ([x v_x] ...)
-                                     #:map (v_after ...)
-                                     #:red v_red
-                                     #:combine combine))
-                  #:rest ((v_next ...)
-                          (v_more ...) ...)))
-        (in-hole world-ctxt
-                 (system
-                  #:sys-st (combine v_red v_st)
-                  #:ents-to-produce-count (+ 1 v_n1)
-                  #:ents-to-produce-vals ((v_after ...) (v_to_prod ...) ...)
-                  #:create-entity? #f
-                  #:done ((v_after ...) (v_done ...) ...)
-                  #:active (entity (+ number_idx 1) (v_next ...)
-                                   ent-e)
-                  #:rest ((v_more ...) ...)))]
-
-   ;; xxx rule to switch from one active entity inside system to next
-   ;; and delete the active entity in the process
-   [--> (in-hole world-ctxt
-                 (system
-                  #:sys-st v_st
-                  #:ents-to-delete-count v_n1
-                  #:ents-to-delete-indices (v_n2 ...)
-                  #:delete-active? #t
-                  #:done ((v_done ...) ...)
-                  #:active (entity number_idx (v_before ...)
-                                   (let ([x v_x] ...)
-                                     #:map (v_after ...)
-                                     #:red v_red
-                                     #:combine combine))
-                  #:rest ((v_next ...)
-                          (v_more ...) ...)))
-        (in-hole world-ctxt
-                 (systems
-                  #:sys-st (combine v_red v_st)
-                  #:ents-to-delete-count (+ 1 v_n1)
-                  #:ents-to-delete-indices (number_idx v_n2 ...)
-                  #:delete-active? #f
-                  #:done ((v_after ...) (v_done ...) ...)
-                  #:active (entity (+ number_idx 1) (v_next ...)
-                                   ent-e)
-                  #:rest ((v_more ...) ...)))]
-   
-   ;; xxx rule to do system state post after last entity
-   [--> (system
-         #:sys-st v_st
-         ;#:code sys-e 
-         #:done ((v_done ...) ...)
-         #:active (entity number_idx (v_before ...)
-                          (let ([x v_x] ...)
-                            #:map (v_after ...)
-                            #:red v_red))
-         #:rest ())
-        (system
-         ;#:code sys-e
-         #:sys-st (combine v_red v_st)
-         #:done ((v_after ...) (v_done ...) ...)
-         #:do-post! #t)]
-   
    ;; xxx rule to switch to next system
-   [--> (world (v_1 ...) (ent-st_1 ...)
+   [--> (world (v_1 ...) 
                #:done (sys-st_done ...)
                #:active sys-st_after
                #:rest (sys-st_next sys-st_more ...))
 
-        (world (v_1 ...) (ent-st_1 ...)
+        (world (v_1 ...)
                #:done (sys-st_after sys-st_done ...)
                #:active sys-st_next
                #:rest (sys-st_more ...))]
@@ -312,7 +240,6 @@
    [--> (world #:done-ev (v_done ...)
                #:active-ev v_after
                #:rest-ev (v_next v_more ...)
-               (ent-st_1 ...)
                #:done (sys-st_done ...)
                #:active sys-st_last
                #:rest ())
@@ -320,10 +247,83 @@
         (world #:done-ev (v_after v_done ...)
                #:active-ev v_next
                #:rest-ev (v_more ...)
-               (ent-st_1 ...)
                #:done ()
                #:active empty
                #:rest (sys-st_last sys-st_done ...))]
+
+   ;; xxx rule to switch from one active entity inside system to next
+   ;; and set up to create a new entity in the process
+   [--> (in-hole world-ctxt
+                 (system
+                  #:sys-st v_st
+                  #:ents-to-produce-count v_n1
+                  #:ents-to-produce-vals ((v_to_prod ...) ...)
+                  #:create-entity? #t
+                  #:done ((v_done ...) ...)
+                  #:red v_red
+                  #:combine (λ (b c)
+                              e_combine)
+                  #:active (entity (v_before ...))
+                  #:rest ((v_next ...)
+                          (v_more ...) ...)))
+        (in-hole world-ctxt
+                 (system
+                  #:sys-st (let ([b v_red] [c v_st])
+                             e_combine)
+                  #:ents-to-produce-count (+ 1 v_n1)
+                  #:ents-to-produce-vals ((v_before ...) (v_to_prod ...) ...)
+                  #:create-entity? #f
+                  #:red v_red
+                  #:combine (λ (b c)
+                              e_combine)
+                  #:done ((v_before ...) (v_done ...) ...)
+                  #:active (entity (v_next ...))
+                  #:rest ((v_more ...) ...)))]
+
+   ;; xxx rule to switch from one active entity inside system to next
+   ;; and set up to delete the active entity in the process
+   [--> (in-hole world-ctxt
+                 (system
+                  #:sys-st v_st
+                  #:ents-to-delete-count v_n1
+                  #:ents-to-delete-indices (v_n2 ...)
+                  #:delete-active? #t
+                  #:done (v_done ...)
+                  #:red v_red
+                  #:combine (λ (b c)
+                              e_combine)
+                  #:active (entity v_before)
+                  #:rest (v_next
+                          v_more ...)))
+        (in-hole world-ctxt
+                 (system
+                  #:sys-st (let ([b v_red] [c v_st])
+                             e_combine)
+                  #:ents-to-delete-count (+ 1 v_n1)
+                  #:ents-to-delete-indices (v_before v_n2 ...)
+                  #:delete-active? #f
+                  #:done (v_before v_done  ...)
+                  #:red v_red
+                  #:combine (λ (b c)
+                              e_combine)
+                  #:active (entity v_next)
+                  #:rest (v_more ...)))]
+   
+   ;; xxx rule to do system state post after last entity
+   [--> (system
+         #:sys-st v_st
+         #:done ((v_done ...) ...)
+         #:active (entity (v_before ...))
+         #:red v_red
+         #:combine (λ (b c)
+                     e_combine)
+         #:rest ())
+        (system
+         #:sys-st (let ([b v_red] [c v_st])
+                    e_combine)
+         #:done ((v_before ...) (v_done ...) ...)
+         #:do-post! #t)]
+   
 
    ;; xxx rules to switch to next system and manage entitites
 
@@ -424,13 +424,13 @@
 
   ;; entity-idx
   (tred '(world () (system 42 (entity 42 (0 1 2)
-                                   (let ([key? (entity-idx)]) #:map (1) #:red 42))))
+                                      (let ([key? (entity-idx)]) #:map (1) #:red 42))))
         '(world () (system 42 (entity 42 (0 1 2) (let ([key? 42]) #:map (1) #:red 42)))))
   
   ;; component-ref
-  #;(tred ' (entity 42 (0 1 2)
-                    (let ([key? (component-ref 2)]) #:map (1) #:red 42))
-          ' (entity 42 (0 1 2) (let ([key? 2]) #:map (1) #:red 42)))
+  (tred ' (world (0 1 2) (system 7 (entity 42 (0 1 2)
+                                           (let ([key? (component-ref 2)]) #:map (1) #:red 42))))
+        ' (world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 2]) #:map (1) #:red 42)))))
 
   ;; event-ref
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2)
@@ -441,6 +441,21 @@
   (tred '(world (0 1 2) (system 7 (entity 42 (0 1 2)
                                           (let ([key? (system-state)]) #:map () #:red 42))))
         '(world (0 1 2) (system 7 (entity 42 (0 1 2) (let ([key? 7]) #:map () #:red 42)))))
+
+  ;; xxx rule to start looking at system entities after system state pre
+  (tred
+   '(system
+     #:sys-st 1
+     #:code (let ([a (event-ref 0)])
+              #:pre [b (+ 1 2)]
+              #:red [c 1 (λ (y z) (+ y z))]
+              #:pst 2)
+     #:rest ((1 2) (3 4))
+     #:do-pre! #t)
+   '(system
+     #:sys-st (+ 1 2)
+     #:active (entity (1 2))
+     #:rest ((3 4))))
 
   ;; switching from one active entity inside system to next
   (tred '(world (0 1 2)
@@ -473,6 +488,149 @@
                  #:rest ((4)))))
 
   ;; switch to next system
+  (tred '(world (0 1)
+                #:done ((system 0))
+                #:active (system 1)
+                #:rest ((system 2) (system 3)))
 
-  )
+        '(world (0 1)
+                #:done ((system 1) (system 0))
+                #:active (system 2)
+                #:rest ((system 3))))
 
+
+
+  ;; xxx rule to switch to next event
+  (tred '(world #:done-ev (0)
+                #:active-ev 1
+                #:rest-ev (2 3)
+                #:done ((system 1) (system 0))
+                #:active (system 2)
+                #:rest ())
+
+        '(world #:done-ev (1 0)
+                #:active-ev 2
+                #:rest-ev (3)
+                #:done ()
+                #:active empty
+                #:rest ((system 2) (system 1) (system 0))))
+
+
+  ;; xxx test switching from one active entity inside system to next
+  ;; and create a new entity in the process
+  (tred '(world (0 1)
+                (system
+                 #:sys-st 1
+                 #:ents-to-produce-count 1
+                 #:ents-to-produce-vals ((1 2) (3 4))
+                 #:create-entity? #t
+                 #:done ((1 2) (3 4))
+                 #:red 1
+                 #:combine (λ (b c) (+ b c))
+                 #:active (entity (1 2))
+                 #:rest ((1 2)
+                         (3 4))))
+        '(world
+          (0 1)
+          (system
+           #:sys-st (let ((b 1) (c 1)) (+ b c))
+           #:ents-to-produce-count (+ 1 1)
+           #:ents-to-produce-vals ((1 2) (1 2) (3 4))
+           #:create-entity? #f
+           #:red 1
+           #:combine (λ (b c) (+ b c))
+           #:done ((1 2) (1 2) (3 4))
+           #:active (entity (1 2))
+           #:rest ((3 4)))))
+
+  ;; xxx test switching from one active entity inside system to next
+  ;; and set up to delete the active entity in the process
+  (tred '(world
+          (0 1)
+          (system
+           #:sys-st 1
+           #:ents-to-delete-count 1
+           #:ents-to-delete-indices (1)
+           #:delete-active? #t
+           #:done (1)
+           #:red 1
+           #:combine (λ (b c) (+ b c))
+           #:active (entity 2)
+           #:rest (3
+                   4 )))
+        '(world
+          (0 1)
+          (system
+           #:sys-st (let ((b 1) (c 1)) (+ b c))
+           #:ents-to-delete-count (+ 1 1)
+           #:ents-to-delete-indices (2 1)
+           #:delete-active? #f
+           #:done (2 1)
+           #:red 1
+           #:combine (λ (b c) (+ b c))
+           #:active (entity 3)
+           #:rest (4))))
+
+  ;; xxx test system state post after last entity
+  (tred '(system
+         #:sys-st 1
+         #:done ((1 2))
+         #:active (entity (3 4))
+         #:red 1
+         #:combine (λ (b c) (+ b c))
+         #:rest ())
+        '(system
+         #:sys-st (let ((b 1) (c 1)) (+ b c))
+         #:done ((3 4) (1 2))
+         #:do-post! #t))
+
+
+  ;; xxx test switching to next system and manage entitites
+
+   ;; entity addition
+   (tred '(world (0 1) ((entity (2 4)) (entity (1 2)))
+               #:done ((system 1))
+               #:active (system
+                         #:sys-st 1
+                         #:ents-to-produce-count 1
+                         #:ents-to-produce-vals ((3 4) (5 6))
+                         #:done ((6 7))
+                         #:active empty
+                         #:rest empty)
+               #:rest ((system 3) (system 4)))
+
+        '(world (0 1) ((entity (3 4)) (entity (2 4)) (entity (1 2)))
+               #:done ((system 1))
+               #:active (system
+                         #:sys-st 1
+                         #:ents-to-produce-count (- 1 1)
+                         #:ents-to-produce-vals ((5 6 ))
+                         #:done ((6 7))
+                         #:active empty
+                         #:rest empty)
+               #:rest ((system 3) (system 4))))
+
+   ;; entity deletion
+   (tred '(world (0 1) ((entity (3 4)) (entity (2 4)) (entity (1 2)))
+               #:done ((system 1))
+               #:active (system
+                         #:sys-st 1
+                         #:ents-to-delete-count 1
+                         #:ents-to-delete-indices (0 1)
+                         #:done (( 2 3))
+                         #:active empty
+                         #:rest empty)
+               #:rest ((system 3) (system 4)))
+
+        '(world (0 1) ((entity (2 4)) (entity (1 2)))
+               #:done ((system 1))
+               #:active (system
+                         #:sys-st 1
+                         #:ents-to-delete-count (- 1 1)
+                         #:ents-to-delete-indices (1)
+                         #:done ((2 3))
+                         #:active empty
+                         #:rest empty)
+               #:rest ((system 3) (system 4)))))
+
+  
