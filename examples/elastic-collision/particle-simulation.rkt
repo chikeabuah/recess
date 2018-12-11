@@ -130,15 +130,37 @@
   #;(set-remove! (hash-ref G (cons (getidx py) (getidx px))) idx)
   ;; set new grid pos
   #;(set-add!
-   (hash-ref G (cons
-                (getidx new-y)
-                (getidx new-x)))
-   idx)
+     (hash-ref G (cons
+                  (getidx new-y)
+                  (getidx new-x)))
+     idx)
   (~~>! particle (make-immutable-hasheq
                   (list
                    (cons 'SpeedX vx)
                    (cons 'SpeedY vy)
                    (cons 'Position new-posn)))))
+
+(define (gravity! p key)
+  (define k
+    (if (and key (not (pair? key)))
+        key
+        #f))
+  (define offset 
+    (cond 
+      [(eq? k 'up) -200]
+      [(eq? k 'down) 200]
+      [else 0]))
+  (define p-sp (get p 'SpeedY))
+  (define new-sp (+ offset p-sp))
+  (~>! p new-sp 'SpeedY))
+
+(define (inertia! p key)
+  (define k
+    (if (and key (not (pair? key)))
+        key
+        #f))
+  (when (and key (eq? k #\s))
+    (~>! p 5 'SpeedY) (~>! p 5 'SpeedX)))
 
 ;; these need to be equal for a square grid 
 (define W 3000)
@@ -193,11 +215,23 @@
   #:map pc (cons (get particle 'Position) (get particle 'Color))
   #:out [image/e (draw-entities pc "ellipse")])
 
+(define-system interactive-gravity
+  #:in [key key/e]
+  #:query p (lookup Particle SpeedY)
+  #:map r (gravity! p (and key (key-event-code key))))
+
+(define-system interactive-inertia
+  #:in [key key/e]
+  #:query p (lookup Particle SpeedY SpeedX)
+  #:map r (inertia! p (and key (key-event-code key))))
+
 (begin-recess
   #:systems
   render-particles  
   move-particles
   particle-collision
+  interactive-gravity
+  interactive-inertia
   #:initialize
   ;; add particles
   (for ([idx (in-range PARTICLES)])
