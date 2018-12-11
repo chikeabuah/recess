@@ -162,6 +162,20 @@
   (when (and key (eq? k #\s))
     (~>! p 5 'SpeedY) (~>! p 5 'SpeedX)))
 
+(define (wind! p key)
+  (define k
+    (if (and key (not (pair? key)))
+        key
+        #f))
+  (define offset 
+    (cond 
+      [(eq? k 'left) -200]
+      [(eq? k 'right) 200]
+      [else 0]))
+  (define p-sp (get p 'SpeedX))
+  (define new-sp (+ offset p-sp))
+  (~>! p new-sp 'SpeedX))
+
 ;; these need to be equal for a square grid 
 (define W 3000)
 (define H 3000)
@@ -225,6 +239,11 @@
   #:query p (lookup Particle SpeedY SpeedX)
   #:map r (inertia! p (and key (key-event-code key))))
 
+(define-system interactive-wind
+  #:in [key key/e]
+  #:query p (lookup Particle SpeedX)
+  #:map r (wind! p (and key (key-event-code key))))
+
 (begin-recess
   #:systems
   render-particles  
@@ -232,6 +251,7 @@
   particle-collision
   interactive-gravity
   interactive-inertia
+  interactive-wind
   #:initialize
   ;; add particles
   (for ([idx (in-range PARTICLES)])
